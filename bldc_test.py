@@ -32,8 +32,12 @@ if not pi.connected:
     sys.exit(1)
 
 max_value = 2000
-min_value = 1190
+min_value = 1300
 window = max_value - min_value
+
+# 1300 -> 42g, 0.405A
+# 1400 -> 102g, 1.09A
+# 2000 -> 326g, 5.2A
 
 
 def init(pin_id=ESC):

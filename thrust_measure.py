@@ -16,8 +16,10 @@ Website: https://www.linkedin.com/in/souham/
 import time
 import sys
 
+import pandas as pd
 from hx711 import HX711
 import RPi.GPIO as GPIO
+from tqdm import tqdm
 
 import numpy as np
 
@@ -34,8 +36,8 @@ pi = pigpio.pi()
 if not pi.connected:
     sys.exit(1)
 
-max_value = 2100
-min_value = 1190
+max_value = 2000
+min_value = 1225
 window = max_value - min_value
 
 
@@ -73,6 +75,7 @@ def drive(s, pin_id=ESC, delay=0.1):
     # print('Driving motor at', 100 * s, '% speed with PWM width', v)
     pi.set_servo_pulsewidth(pin_id, v)
     # time.sleep(delay)
+    return v
 
 
 def brake(pin_id=ESC):
@@ -80,32 +83,47 @@ def brake(pin_id=ESC):
 
 
 def get_thrust(s):
-    drive(s)
-    time.sleep(4)
-    m = hx711.get_weight(5)
-    print('Generating thrust of', m, 'KGs at', 100. * s, '% power')
-    time.sleep(5)
-    return m
+    pwm_val = drive(s)
+    time.sleep(9)
+    m = hx711.get_weight(9)
+    print('Generating thrust of', m, 'grams at', 100. * s, '% power')
+    time.sleep(2)
+    return m, pwm_val
 
 
 if __name__ == '__main__':
+    hx711 = HX711(5, 6)
+
+    hx711.reset()
+    hx711.tare()
+
+    ref_unit = 660
+    hx711.set_reference_unit(ref_unit)
+
+    # for i in range(50):
+    #     m = hx711.get_weight(9)
+    #     print(m)
+
+    c = {'power': [],
+         'thrust': [],
+         'pwm_val': []}
+
     # init()
     # arm()
 
-    hx711 = HX711(5, 6)
-    ref_unit = -630000
-    hx711.set_reference_unit(ref_unit)
+    for i in tqdm(range(50)):
+        pval = np.random.random()
+        th, pwm_val = get_thrust(pval)
 
-    for i in range(1000000):
-
-        # get_thrust(np.random.random())
-
-        m = hx711.get_weight(1)
-        print(m)
-        # drive(np.clip(m, 0, 1))
+        c['power'].append(pval)
+        c['thrust'].append(th)
+        c['pwm_val'].append(pwm_val)
+        brake()
         time.sleep(1)
-        k = 0
-    # brake()
-    # pi.stop()
+    df = pd.DataFrame(c)
+    df.to_csv('motor_characteristics_.csv', index=False)
+
+    brake()
+    pi.stop()
     GPIO.cleanup()
 
