@@ -3,7 +3,8 @@
 import RPi.GPIO as GPIO
 import time
 import threading
-
+import numpy as np
+from kalman_filter.algorithm import KalmanFilter
 
 
 class HX711:
@@ -38,6 +39,12 @@ class HX711:
         self.bit_format = 'MSB'
 
         self.set_gain(gain)
+        self.kf = None
+
+        self.min_z_err = 0
+        self.max_z_err = 0
+        self.mea_mean = 0
+        self.mea_std = 1.
 
         # Think about whether this is necessary.
         time.sleep(1)
@@ -242,14 +249,26 @@ class HX711:
         return value
 
     # Compatibility function, uses channel A version
-    def get_weight(self, times=3):
-        return self.get_weight_A(times)
+    def get_weight(self, times=3, filter=False):
+        if self.kf is None and filter:
+            w = self.get_weight_A(times)
+            self.kf = KalmanFilter(w, measured_error_mean=self.mea_mean, measured_error_std=self.mea_std,
+                                   estimated_error_mean=.0, estimated_error_std=1.)
+        w = self.get_weight_A(times)
+        if filter:
+            w = self.kf.predict(w)
+        return w
 
 
     def get_weight_A(self, times=3):
         value = self.get_value_A(times)
-        value = value / self.REFERENCE_UNIT
-        return value
+        w = value / self.REFERENCE_UNIT
+        if w > 0:
+            c = self.max_z_err
+        else:
+            c = self.min_z_err
+        w = np.sign(w) * (np.abs(w) - c)
+        return w
 
     def get_weight_B(self, times=3):
         value = self.get_value_B(times)

@@ -22,6 +22,7 @@ import RPi.GPIO as GPIO
 from tqdm import tqdm
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 
 # importing time library to make Rpi wait because its too impatient
@@ -37,7 +38,7 @@ if not pi.connected:
     sys.exit(1)
 
 max_value = 2000
-min_value = 1225
+min_value = 1315
 window = max_value - min_value
 
 
@@ -79,30 +80,59 @@ def drive(s, pin_id=ESC, delay=0.1):
 
 
 def brake(pin_id=ESC):
-    drive(-0.0001)
+    drive(-0.1)
 
 
 def get_thrust(s):
     pwm_val = drive(s)
-    time.sleep(9)
-    m = hx711.get_weight(9)
+    time.sleep(3)
+    # ramp_thrust = []
+    # for i in range(20):  # measuring thrust change characeristics
+    #     ramp_thrust.append(hx711.get_weight(3))
+    #     # time.sleep(0.45)
+    m = hx711.get_weight(3)
+    if m != m:
+        m = 0.
     print('Generating thrust of', m, 'grams at', 100. * s, '% power')
-    time.sleep(2)
-    return m, pwm_val
+    # decay_thrust = []
+    # for i in range(8):  # measuring thrust change characeristics
+    #     decay_thrust.append(hx711.get_weight(3))
+        # time.sleep(0.25)
+    return m, pwm_val #, [ramp_thrust, decay_thrust]
 
 
 if __name__ == '__main__':
-    hx711 = HX711(5, 6)
 
-    hx711.reset()
-    hx711.tare()
+    # print('Done!', hx711.min_z_err, hx711.max_z_err)
+    # ws = np.hstack([wp, wn])
+    # f = np.logical_and(ws > -60, ws < 60)
+    # if True in f:
+    #     hx711.mea_mean = np.mean(ws[f])
+    #     hx711.mea_std = np.std(ws[f])
+    #     print('Initial measurement error mean and std', hx711.mea_mean, hx711.mea_std)
+    #
+    # print('Finding Error spread...')
+    # ws = []
+    # for i in range(10):
+    #     w = hx711.get_weight(times=3, filter=True)
+    #     ws.append(w)
+    # hx711.kf = None
+    # ws = np.array(ws)
+    # f = np.logical_and(ws > -60, ws < 60)
+    # hx711.mea_mean = np.mean(ws[f])
+    # hx711.mea_std = np.std(ws[f])
+    # print('Done!', hx711.mea_mean, hx711.mea_std)
 
-    ref_unit = 660
-    hx711.set_reference_unit(ref_unit)
-
-    # for i in range(50):
-    #     m = hx711.get_weight(9)
-    #     print(m)
+    # ws = []
+    # while True:
+    #     w = hx711.get_weight(times=3)
+    #     ws.append(w)
+    #     print(w)
+    #
+    #     if len(ws) % 100 == 0:
+    #         fig, ax = plt.subplots(figsize=(10, 7))
+    #         ax.hist(ws, bins=50)
+    #         plt.show()
 
     c = {'power': [],
          'thrust': [],
@@ -111,17 +141,48 @@ if __name__ == '__main__':
     # init()
     # arm()
 
-    for i in tqdm(range(50)):
-        pval = np.random.random()
+    hx711 = HX711(5, 6)
+
+    hx711.set_reading_format("MSB", "MSB")
+
+    ref_unit = 660
+    hx711.set_reference_unit(ref_unit)
+    # time.sleep(3)
+
+    hx711.reset()
+    hx711.tare()
+    # ws = []
+    #
+    wp = []
+    wn = []
+    print('Calibrating weight sensor...')
+    for i in range(10):
+        w = hx711.get_weight(times=3)
+        if w >= 0:
+            wp.append(w)
+        else:
+            wn.append(abs(w))
+    hx711.min_z_err = np.mean(wn)
+    hx711.max_z_err = np.mean(wp)
+
+    if float(sys.argv[1]) > .3:
+        print('HIGH POWER TEST WARNING: Waiting 20 seconds before test starts, VACATE THE AREA!!!!!')
+        time.sleep(20)
+
+    for i in tqdm(range(int(sys.argv[2]))):
+        pval = np.random.uniform(0, float(sys.argv[1]))
         th, pwm_val = get_thrust(pval)
 
         c['power'].append(pval)
         c['thrust'].append(th)
+
         c['pwm_val'].append(pwm_val)
         brake()
+        df = pd.DataFrame(c)
+        df.to_csv('motor_characteristics_withbrake_2450kv_.csv', index=False)
         time.sleep(1)
     df = pd.DataFrame(c)
-    df.to_csv('motor_characteristics_.csv', index=False)
+    df.to_csv('motor_characteristics_withbrake_2450kv_.csv', index=False)
 
     brake()
     pi.stop()
