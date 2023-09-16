@@ -32,6 +32,7 @@ input_transforms = transforms.Compose([transforms.CenterCrop(3024),
                                        transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                                             std=[0.229, 0.224, 0.225])])
 
+
 def drawMatches(img1, kp1, img2, kp2, matches):
     # Create a new output image that concatenates the two images together
     # (a.k.a) a montage
@@ -76,14 +77,17 @@ def drawMatches(img1, kp1, img2, kp2, matches):
     return out
 
 
+def viz_matches(masked_matches, ima, imb, heatmap):
+    pxy_matches, conf_matches, desc_matches = masked_matches
+    a = cv2.resize(np.array(ima), (480, 480))[:, :, [2, 1, 0]]
+    b = cv2.resize(np.array(imb), (480, 480))[:, :, [2, 1, 0]]
+    img = drawMatches(a, pxy_matches[0][:, :2].numpy(), b, pxy_matches[0][:, 2:].numpy(), pxy_matches[0].numpy())
+    hm_a = (heatmap[0][0].detach().numpy() * 255).astype(np.uint8)
+    hm_b = (heatmap[0][1].detach().numpy() * 255).astype(np.uint8)
+    return img, hm_a, hm_b
+
+
 if __name__ == '__main__':
-    # if torch.backends.mps.is_available():
-    #     device = torch.device("mps")
-    #     x = torch.ones(1, device=device)
-    #     print(x)
-    # else:
-    #     device = torch.device("cpu")
-    #     print("MPS device not found."
     device = torch.device("cpu")
 
     ima = Image.open('scratchspace/IMG_3806.HEIC')
@@ -99,17 +103,21 @@ if __name__ == '__main__':
 
     heatmap, masked_outs, unmasked_outs = nmatch(t_a, t_b)
 
-    masked_matches, _ = masked_outs
+    masked_matches, masked_unmatches, n_masked_matches = masked_outs
 
-    pxy_matches, conf_matches, desc_matches = masked_matches
+    match_viz, heatmap_a, heatmap_b = viz_matches(masked_matches, ima, imb, heatmap)
+    cv2.imwrite('match_viz_match.png', match_viz)
+    cv2.imwrite('heatmap_a_match.png', heatmap_a)
+    cv2.imwrite('heatmap_b_match.png', heatmap_b)
 
-    a = cv2.resize(np.array(ima), (480, 480))[:, :, [2, 1, 0]]
-    b = cv2.resize(np.array(imb), (480, 480))[:, :, [2, 1, 0]]
+    match_viz, heatmap_a, heatmap_b = viz_matches(masked_unmatches, ima, imb, heatmap)
+    cv2.imwrite('match_viz_unmatch.png', match_viz)
+    cv2.imwrite('heatmap_a_unmatch.png', heatmap_a)
+    cv2.imwrite('heatmap_b_unmatch.png', heatmap_b)
 
-    img3 = drawMatches(a, pxy_matches[0][:, :2].numpy(), b, pxy_matches[0][:, 2:].numpy(), pxy_matches[0].numpy())
-    cv2.imwrite('im.png', img3)
-
-    hm = (heatmap[0][0].detach().numpy() * 255).astype(np.uint8)
-    cv2.imwrite('hm.png', hm)
+    match_viz, heatmap_a, heatmap_b = viz_matches(n_masked_matches, ima, imb, heatmap)
+    cv2.imwrite('match_viz_nomatch.png', match_viz)
+    cv2.imwrite('heatmap_a_nomatch.png', heatmap_a)
+    cv2.imwrite('heatmap_b_nomatch.png', heatmap_b)
 
     k = 0
