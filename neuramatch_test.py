@@ -23,6 +23,7 @@ register_heif_opener()
 from torchvision import transforms
 
 from neural_matcher.nn import NeuraMatch
+from neural_matcher.losses import KeypointLoss
 
 
 tensor_transform = transforms.ToTensor()
@@ -87,11 +88,32 @@ def viz_matches(masked_matches, ima, imb, heatmap):
     return img, hm_a, hm_b
 
 
+
 if __name__ == '__main__':
     device = torch.device("cpu")
 
     ima = Image.open('scratchspace/IMG_3806.HEIC')
     imb = Image.open('scratchspace/IMG_3807.HEIC')
+
+    im_a_cv2 = cv2.cvtColor(cv2.resize(np.array(ima.convert('RGB'))[:, :, [2, 1, 0]], (480, 480)), cv2.COLOR_BGR2GRAY)
+    im_b_cv2 = cv2.cvtColor(cv2.resize(np.array(ima.convert('RGB'))[:, :, [2, 1, 0]],  (480, 480)), cv2.COLOR_BGR2GRAY)
+
+    kp_det = cv2.SIFT()
+
+    kp_a, desc_a = kp_det.detectAndCompute(im_a_cv2, None)
+    kp_b, desc_b = kp_det.detectAndCompute(im_b_cv2, None)
+
+    bf = cv2.BFMatcher()
+    matches = bf.knnMatch(desc_a, desc_b, k=2)
+    good = []
+    for m, n in matches:
+        if m.distance < 0.75 * n.distance:
+            good.append([m])
+    # cv.drawMatchesKnn expects list of lists as matches.
+    img_gt_match_viz = cv2.drawMatchesKnn(im_a_cv2, kp_a, im_b_cv2, kp_b, good, None,
+                                          flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    cv2.imwrite('gt_match_viz.png', img_gt_match_viz)
+    exit()
 
     im_a = tensor_transform(ima).to(device)
     im_b = tensor_transform(imb).to(device)
