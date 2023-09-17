@@ -11,9 +11,12 @@
 Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
+import os
+
 import torch
 import cv2
 import numpy as np
+from coolname import generate_slug
 
 from PIL import Image
 from pillow_heif import register_heif_opener
@@ -22,6 +25,7 @@ register_heif_opener()
 
 from torchvision import transforms
 
+from dataset.retriever import HandCurated
 from neural_matcher.nn import NeuraMatch
 from neural_matcher.losses import KeypointLoss
 
@@ -90,30 +94,20 @@ def viz_matches(masked_matches, ima, imb, heatmap):
 
 
 if __name__ == '__main__':
+    ds = HandCurated()
+
+    dir = 'scratchspace/gt_viz_images/' + ds.tag + '_' + generate_slug(2)
+    os.makedirs(dir, exist_ok=True)
+    for i in range(1000):
+        x, y, fm, v = ds.sample_image_pair()
+        fn = '_'.join([str(i), str(y[0].shape[0]), str(fm[1][1] - fm[0][1]), fm[0][0], str(fm[0][1]), str(fm[1][1])]) + '.jpg'
+        fp = dir + os.sep + fn
+        cv2.imwrite(fp, v)
+
     device = torch.device("cpu")
 
     ima = Image.open('scratchspace/IMG_3806.HEIC')
     imb = Image.open('scratchspace/IMG_3807.HEIC')
-
-    im_a_cv2 = cv2.cvtColor(cv2.resize(np.array(ima.convert('RGB'))[:, :, [2, 1, 0]], (480, 480)), cv2.COLOR_BGR2GRAY)
-    im_b_cv2 = cv2.cvtColor(cv2.resize(np.array(ima.convert('RGB'))[:, :, [2, 1, 0]],  (480, 480)), cv2.COLOR_BGR2GRAY)
-
-    kp_det = cv2.SIFT()
-
-    kp_a, desc_a = kp_det.detectAndCompute(im_a_cv2, None)
-    kp_b, desc_b = kp_det.detectAndCompute(im_b_cv2, None)
-
-    bf = cv2.BFMatcher()
-    matches = bf.knnMatch(desc_a, desc_b, k=2)
-    good = []
-    for m, n in matches:
-        if m.distance < 0.75 * n.distance:
-            good.append([m])
-    # cv.drawMatchesKnn expects list of lists as matches.
-    img_gt_match_viz = cv2.drawMatchesKnn(im_a_cv2, kp_a, im_b_cv2, kp_b, good, None,
-                                          flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
-    cv2.imwrite('gt_match_viz.png', img_gt_match_viz)
-    exit()
 
     im_a = tensor_transform(ima).to(device)
     im_b = tensor_transform(imb).to(device)
