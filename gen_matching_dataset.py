@@ -16,13 +16,14 @@ import os
 import pickle
 import ssl
 
+import numpy as np
+
 import utils
 
 ssl._create_default_https_context = ssl._create_stdlib_context
 
 from tqdm import tqdm
 import cv2
-from coolname import generate_slug
 from pytube import YouTube
 from youtubesearchpython import VideosSearch
 import openai
@@ -32,10 +33,11 @@ from dataset.retriever import HandCurated
 
 MODE = 'train'
 DATASET_DIR = utils.DOWNLOADED_DATASET_DIR
-TOPIC = 'fpv drone shots of indoor environments and real estate'
+TOPIC = 'indoor sample real estate fpv drone footage'
 
-MAX_SEARCH_VIDEOS = 2
-NUM_GEN_PAIRS = 20
+MAX_VIDEO_DURATION_IN_MINUTES = 10
+MAX_SEARCH_VIDEOS = 5
+NUM_GEN_PAIRS = 150
 SEARCH_LISTS_DIR = 'scratchspace/youtube_video_search_lists'
 
 
@@ -56,16 +58,25 @@ if __name__ == '__main__':
     print('Raw Response -')
     print(search_phrases_raw)
 
-    search_queries = list(map(lambda x: x.split(' \"')[-1].replace('\"', ''), search_phrases_raw.split('\n')))
+    search_queries = list(map(lambda x: x.split(' \"')[-1].replace('\"', ''), search_phrases_raw.split('\n')[1:-1]))
+    covered_titles = []
 
+    condn = lambda l: len(l['duration'].split(':')) > 1 and len(l['duration'].split(':')) < 3 \
+                      and int(l['duration'].split(':')[-2]) < MAX_VIDEO_DURATION_IN_MINUTES
     for video_search_phrase in search_queries:
         print('Searching YouTube with query:', video_search_phrase)
         search_tag = '_'.join([video_search_phrase.replace(' ', '-'), MODE])
 
-        videos_search = VideosSearch(video_search_phrase, limit=MAX_SEARCH_VIDEOS) # TODO: remove dupliate downloads
+        videos_search = VideosSearch(video_search_phrase, limit=10 * MAX_SEARCH_VIDEOS)
         search_results = videos_search.result()['result']
-        links = [l['link'] for l in search_results]
-        titles = [l['title'] for l in search_results]
+        links = [l['link'] for l in search_results if l['title'] not in covered_titles and condn(l)]
+        titles = [l['title'] for l in search_results if l['title'] not in covered_titles and condn(l)]
+
+        li = np.arange(len(links))
+        np.random.shuffle(li)
+        links = np.array(links)[li[:MAX_SEARCH_VIDEOS]]
+        titles = np.array(titles)[li[:MAX_SEARCH_VIDEOS]]
+        covered_titles += list(titles)
 
         print('Video Titles -')
         print(titles)
@@ -78,10 +89,11 @@ if __name__ == '__main__':
         with open(title_fpath, 'w') as f:
             f.write('\n'.join(titles))
 
-        out_dir = os.sep.join([DATASET_DIR, 'videos', search_tag])
+        out_dir = os.sep.join([DATASET_DIR, 'videos', MODE])
         os.makedirs(out_dir, exist_ok=True)
 
         i = 1
+        local_video_fps = []
         for link in links:
             print('Downloading', link, i, '/', len(links))
             try:
@@ -91,26 +103,27 @@ if __name__ == '__main__':
                 if len(stream) > 0:
                     out_fp = out_dir + os.sep + title + '.mp4'
                     if not os.path.exists(out_fp):
-                        print('Downloading from', link, 'to', out_fp)
-                        stream[0].download(out_dir)
-                        print('Downloaded!')
+                        print('Downloading from', link)
+                        out_fp = stream[0].download(out_dir)
+                        print('Downloaded to', out_fp, '!')
                     else:
                         print(out_fp, 'exists..., skipping download')
+                    local_video_fps.append(out_fp)
                 else:
                     print('Failed :(')
             except Exception as e:
                 print('Download aborted. Resaon - ', e)
             i += 1
 
-        ds = HandCurated(DATASET_DIR, video_dir=out_dir, mode=MODE)
+        ds = HandCurated(local_video_fps, mode=MODE)
 
-        suffix = generate_slug(2)
-        dirname = '_'.join([search_tag.replace('_' + MODE, ''), ds.tag, suffix])
+        # suffix = generate_slug(2)
+        dirname = '_'.join([search_tag.replace('_' + MODE, ''), ds.tag])
         viz_dir = 'scratchspace/gt_viz_images/' + dirname
         data_dir = 'scratchspace/gt_data/' + dirname
         os.makedirs(viz_dir, exist_ok=True)
         os.makedirs(data_dir, exist_ok=True)
-        print('Generating dataset...', suffix)
+        print('Generating dataset...', dirname)
         for i in tqdm(range(NUM_GEN_PAIRS)):
             x, y, fm, v = ds.sample_image_pair()
             fn = '_'.join([str(i), str(y[0].shape[0]), str(fm[1][1] - fm[0][1]), fm[0][0], str(fm[0][1]), str(fm[1][1])])

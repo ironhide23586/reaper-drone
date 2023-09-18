@@ -12,11 +12,10 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-from glob import glob
-import fnmatch
 import os
 
 import cv2
+from moviepy.video.io.VideoFileClip import VideoFileClip
 import numpy as np
 
 import utils
@@ -27,31 +26,57 @@ class VideoCap:
     def __init__(self, fp):
         self.fp = fp
         self.fn = fp.split(os.sep)[-1]
-        self.cap = cv2.VideoCapture(fp)
-        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
-        self.n_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.cap ,self.fps, self.n_frames, self.width, self.height = self.read_video_file(fp)
         self.min_s = min(self.width, self.height)
         self.x_offset = (self.width - self.min_s) // 2
         self.y_offset = (self.height - self.min_s) // 2
+
+    def read_video_file(self, fp):
+        cap = cv2.VideoCapture(fp)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        return cap, fps, n_frames, width, height
+
+    # def read_video_file(self, fp):
+    #     cap = VideoFileClip(fp)
+    #     fps = self.cap.get(cv2.CAP_PROP_FPS)
+    #     n_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    #     width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    #     height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    #     return cap, fps, n_frames, width, height
+
+    def read_frame(self, frame_idx):
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx - 1)
+        res, frame = self.cap.read()
+        return frame
 
     def center_crop(self, frame):
         im = frame[self.y_offset: self.y_offset + self.min_s, self.x_offset: self.x_offset + self.min_s]
         return im
 
-    def get_frame(self, frame_idx, side):
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx - 1)
-        res, frame = self.cap.read()
-        frame_square = self.center_crop(frame)
+    def random_crop(self, frame):
+        yo = np.random.randint(0, self.y_offset + 1)
+        xo = np.random.randint(0, self.x_offset + 1)
+        im = frame[yo: yo + self.min_s, xo: xo + self.min_s]
+        return im
+
+    def get_frame(self, frame_idx, side, random_crop=False, random_rotate=False):
+        frame = self.read_frame(frame_idx)
+        if random_crop:
+            frame_square = self.random_crop(frame)
+        else:
+            frame_square = self.center_crop(frame)
+        if random_rotate:
+            frame_square = utils.rotate_image(frame_square, np.random.randint(-180, 180))
         frame_square = cv2.resize(frame_square, (side, side))
         return frame_square
 
 
 class HandCurated:
 
-    def __init__(self, dataset_dir, mode='val', side=480, sift_tolerance=.4, min_n_matches=5, frame_interval=150,
-                 video_dir='videos'):
+    def __init__(self, video_fps, mode='val', side=480, sift_tolerance=.4, min_n_matches=5, frame_interval=150):
         self.mode = mode
         self.side = side
         self.video_caps = []
@@ -60,22 +85,22 @@ class HandCurated:
         self.frame_interval = int(frame_interval)
         self.tag = '_'.join([str(sift_tolerance) + '.sift-tolerance',
                              str(min_n_matches) + '.min-n-matches',
-                             str(frame_interval) + '.frame-interval',
+                             str(frame_interval) + '.max-frame-interval',
                              str(self.side) + '.side',
                              self.mode])
-        self.data_dirs = [d + os.sep + self.mode for d in glob(dataset_dir + os.sep + '*')]
-        self.video_dir = video_dir
-        # self.image_dir = fnmatch.filter(self.data_dirs, '*' + os.sep + 'images' + os.sep + '*')[0]
-        self.n_videos = self.ingest_videos(self.video_dir)
+        self.n_videos = self.ingest_videos(video_fps)
         self.keypoint_detector = cv2.xfeatures2d.SIFT_create()
         self.keypoint_matcher = cv2.BFMatcher()
 
-    def ingest_videos(self, dir):
-        fps = glob(dir + os.sep + '*.mp4')
+    def ingest_videos(self, fps):
+        # fps = glob(dir + os.sep + '*.mp4')
         for fp in fps:
             video_obj = VideoCap(fp)
-            self.video_caps.append(video_obj)
-        return len(fps)
+            if video_obj.n_frames > 25:
+                self.video_caps.append(video_obj)
+            else:
+                print('Skipping', fp, 'as number of frames is too low (', video_obj.n_frames, ')')
+        return len(self.video_caps)
 
     def sift_match(self, im_a, im_b):
         good = []
@@ -90,23 +115,36 @@ class HandCurated:
                 if m.distance < self.sift_tolerance * n.distance:
                     kp_a_sel = kp_a[m.queryIdx]
                     kp_b_sel = kp_b[m.trainIdx]
-                    y.append(np.hstack([kp_a_sel.pt, kp_b_sel.pt]))
-                    good.append([m])
+                    if not np.array_equal(kp_a_sel.pt, kp_b_sel.pt):
+                        y.append(np.hstack([kp_a_sel.pt, kp_b_sel.pt]))
+                        good.append([m])
         y = np.array(y)
         return y, (good, kp_a, kp_b)
 
-    def get_matches_worker(self, window_size):
-        # if self.mode == 'train':
+    def get_matches_worker(self):
+        random_flag = self.mode == 'train'
         window_size = np.random.randint(1, self.frame_interval)
         ni = np.random.randint(0, self.n_videos)
-        fi = np.random.randint(3 * self.video_caps[ni].fps, self.video_caps[ni].n_frames - window_size - 1 - 100)
-        im_a = self.video_caps[ni].get_frame(fi, self.side)
-        im_b = self.video_caps[ni].get_frame(fi + window_size, self.side)
+        si = min(3 * self.video_caps[ni].fps, max(0, self.video_caps[ni].n_frames - 2 * window_size))
+        ei = max(self.video_caps[ni].n_frames - window_size - 1 - 100, si + 1)
+        fi = int(np.clip(np.random.randint(si, ei), 0, self.video_caps[ni].n_frames - 2))
+        im_a = self.video_caps[ni].get_frame(fi, self.side,
+                                             random_crop=random_flag, random_rotate=random_flag)
+        im_b = self.video_caps[ni].get_frame(min(fi + window_size, fi + 1), self.side,
+                                             random_crop=random_flag, random_rotate=random_flag)
         matches_xy, match_data = self.sift_match(im_a, im_b)
+        match_angle_std = 0.
+
+        if matches_xy.shape[0] > 0:
+            match_vecs = matches_xy[:, 2:] - matches_xy[:, :2]
+            match_vecs = match_vecs / np.linalg.norm(match_vecs)
+            match_vec_angles = np.rad2deg(np.arctan2(match_vecs[:, 1], match_vecs[:, 0]))
+            match_angle_std = np.std(match_vec_angles)
+
         frame_meta_data_a = [self.video_caps[ni].fn, fi]
         frame_meta_data_b = [self.video_caps[ni].fn, fi + window_size]
         frame_meta_data = [frame_meta_data_a, frame_meta_data_b]
-        return im_a, im_b, (matches_xy, match_data), frame_meta_data
+        return im_a, im_b, (matches_xy, match_data), frame_meta_data, match_angle_std
 
     def viz_matches(self, im_a, im_b, matches):
         matches_xy, match_data = matches
@@ -115,12 +153,10 @@ class HandCurated:
                                               flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
         return img_gt_match_viz
 
-    def sample_image_pair(self, viz=True, window_size=None):
-        if window_size is None:
-            window_size = self.frame_interval
-        im_a, im_b, matches, frame_metadata = self.get_matches_worker(window_size)
+    def sample_image_pair(self, viz=True):
+        im_a, im_b, matches, frame_metadata, match_angle_std = self.get_matches_worker()
         while matches[0].shape[0] < self.min_n_matches:
-            im_a, im_b, matches, frame_metadata = self.get_matches_worker(window_size)
+            im_a, im_b, matches, frame_metadata, match_angle_std = self.get_matches_worker()
         im_viz = None
         if viz:
             im_viz = self.viz_matches(im_a, im_b, matches)
