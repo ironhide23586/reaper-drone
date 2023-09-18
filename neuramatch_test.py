@@ -85,6 +85,7 @@ if __name__ == '__main__':
 
     heatmap, masked_outs, unmasked_outs = nmatch(t_a, t_b)
 
+
     masked_matches, masked_unmatches, n_masked_matches = masked_outs
 
     match_viz, heatmap_a, heatmap_b = viz_matches(masked_matches, ima, imb, heatmap)
