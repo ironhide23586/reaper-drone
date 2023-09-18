@@ -11,12 +11,10 @@
 Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
-import os
 
 import torch
 import cv2
 import numpy as np
-from coolname import generate_slug
 
 from PIL import Image
 from pillow_heif import register_heif_opener
@@ -24,62 +22,16 @@ from pillow_heif import register_heif_opener
 register_heif_opener()
 
 from torchvision import transforms
+from torch.utils.data import DataLoader
 
-from dataset.retriever import HandCurated
 from neural_matcher.nn import NeuraMatch
+from dataset.streamer import ImagePairDataset
 from neural_matcher.losses import KeypointLoss
 
 
 tensor_transform = transforms.ToTensor()
 
-input_transforms = transforms.Compose([transforms.CenterCrop(3024),
-                                       transforms.Resize(480),
-                                       transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                            std=[0.229, 0.224, 0.225])])
-
-
-def drawMatches(img1, kp1, img2, kp2, matches):
-    # Create a new output image that concatenates the two images together
-    # (a.k.a) a montage
-    rows1 = img1.shape[0]
-    cols1 = img1.shape[1]
-    rows2 = img2.shape[0]
-    cols2 = img2.shape[1]
-
-    out = np.zeros((max([rows1, rows2]),cols1+cols2,3), dtype='uint8')
-
-    # Place the first image to the left
-    out[:rows1,:cols1] = img1
-
-    # Place the next image to the right of it
-    out[:rows2,cols1:cols1+cols2] = img2
-
-    # For each pair of points we have between both images
-    # draw circles, then connect a line between them
-    for mi in range(matches.shape[0]):
-        # mat = matches[mi]
-        # Get the matching keypoints for each of the images
-        # img1_idx = mat[:2]
-        # img2_idx = mat[2:]
-
-        # x - columns
-        # y - rows
-        (x1,y1) = kp1[mi]
-        (x2,y2) = kp2[mi]
-
-        # Draw a small circle at both co-ordinates
-        # radius 4
-        # colour blue
-        # thickness = 1
-        cv2.circle(out, (int(x1), int(y1)), 4, (255, 0, 0), 1)
-        cv2.circle(out, (int(x2)+cols1, int(y2)), 4, (255, 0, 0), 1)
-
-        # Draw a line in between the two points
-        # thickness = 1
-        # colour blue
-        cv2.line(out, (int(x1),int(y1)), (int(x2)+cols1,int(y2)), (255, 0, 0), 1)
-
-    return out
+input_transforms = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
 
 def viz_matches(masked_matches, ima, imb, heatmap):
@@ -92,17 +44,31 @@ def viz_matches(masked_matches, ima, imb, heatmap):
     return img, hm_a, hm_b
 
 
+def collater(data):
+    ims = []
+    pxys = []
+    heatmaps = []
+    for d in data:
+        x = d[0] / 255.
+        ims.append(input_transforms(torch.Tensor(x)))
+        pxys.append(torch.Tensor(d[1].astype(int)))
+        heatmaps.append(d[2])
+    heatmaps = torch.Tensor(np.stack(heatmaps))
+    ims = torch.stack(ims)
+    return ims, pxys, heatmaps
+
+
 
 if __name__ == '__main__':
-    ds = HandCurated()
 
-    dir = 'scratchspace/gt_viz_images/' + ds.tag + '_' + generate_slug(2)
-    os.makedirs(dir, exist_ok=True)
-    for i in range(1000):
-        x, y, fm, v = ds.sample_image_pair()
-        fn = '_'.join([str(i), str(y[0].shape[0]), str(fm[1][1] - fm[0][1]), fm[0][0], str(fm[0][1]), str(fm[1][1])]) + '.jpg'
-        fp = dir + os.sep + fn
-        cv2.imwrite(fp, v)
+    ds = ImagePairDataset('scratchspace/gt_data', 'train')
+    data_loader = DataLoader(ds, 5, collate_fn=collater)
+
+    for bi, (ims, pxys, heatmaps) in enumerate(data_loader):
+        k = 0
+
+    matches_xy, heatmaps = ds[56]
+    matches_xy_, heatmaps_ = ds[58]
 
     device = torch.device("cpu")
 

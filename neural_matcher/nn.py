@@ -76,7 +76,6 @@ class NeuraMatch(nn.Module):
         p_xy_kp_ab, y_sel, f_ab_sel, f_sel, kpi = self.filter_matches(p_xy_kp_a, p_xy_kp_b, s, f_a, f_b, heatmap_1d)
         p_xy_kp_ab_sel, y_conf_sel, desc_sel, \
             n_p_xy_kp_ab_sel, n_y_conf_sel, n_desc_sel = self.post_process_matches(p_xy_kp_ab, y_sel, f_ab_sel, f_sel)
-
         kpi_sel = kpi[f_sel]
         kpi_sel_qis = kpi_sel[:, 0]
         qi = torch.unique(kpi_sel_qis)
@@ -91,11 +90,9 @@ class NeuraMatch(nn.Module):
             pi_n.append(torch.hstack([ni_sel[fq][:fi], ni_sel[fq][fi + 1:]]))
         pi = torch.Tensor(pi).int()
         pi_n = torch.hstack(pi_n)
-
         p_xy_kp_ab_sel_matched, y_conf_sel_matched, desc_sel_matched = p_xy_kp_ab_sel[pi], y_conf_sel[pi], desc_sel[pi]
         p_xy_kp_ab_sel_unmatched, y_conf_sel_unmatched, desc_sel_unmatched = p_xy_kp_ab_sel[pi_n], y_conf_sel[pi_n], \
             desc_sel[pi_n]
-
         return (p_xy_kp_ab_sel_matched, y_conf_sel_matched, desc_sel_matched), \
             (p_xy_kp_ab_sel_unmatched, y_conf_sel_unmatched, desc_sel_unmatched), \
             (n_p_xy_kp_ab_sel, n_y_conf_sel, n_desc_sel)

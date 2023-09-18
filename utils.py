@@ -20,11 +20,19 @@ import cv2
 
 
 DATASET_DIR = 'scratchspace/datasets'
-OPENAI_API_KEY = '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'
+OPENAI_API_KEY = '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'
 
 HAND_CURATED_DATASET_DIR = DATASET_DIR + os.sep + 'hand_curated'
 
 DOWNLOADED_DATASET_DIR = DATASET_DIR + os.sep + 'downloaded'
+
+
+def create_heatmap(pxy, s):
+  m = np.zeros(s * s, dtype=np.uint8)
+  pxy_1d = (pxy[:, 0].astype(int) + (pxy[:, 1].astype(int) * s))
+  m[pxy_1d] = 1
+  m = m.reshape([s, s])
+  return m
 
 
 def rotate_image(image, angle, remove_black_patches=True):
@@ -39,6 +47,22 @@ def rotate_image(image, angle, remove_black_patches=True):
     im_cropped = result[offset_h: offset_h + int(hr), offset_w: offset_w + int(wr)]
     result = cv2.resize(im_cropped, (w, h))
   return result
+
+def drawMatches(img1, kp1, img2, kp2):
+  rows1 = img1.shape[0]
+  cols1 = img1.shape[1]
+  rows2 = img2.shape[0]
+  cols2 = img2.shape[1]
+  out = np.zeros((max([rows1, rows2]), cols1 + cols2, 3), dtype='uint8')
+  out[:rows1, :cols1] = img1
+  out[:rows2, cols1:cols1 + cols2] = img2
+  for mi in range(kp1.shape[0]):
+    (x1, y1) = kp1[mi]
+    (x2, y2) = kp2[mi]
+    cv2.circle(out, (int(x1), int(y1)), 4, (255, 0, 0), 1)
+    cv2.circle(out, (int(x2) + cols1, int(y2)), 4, (255, 0, 0), 1)
+    cv2.line(out, (int(x1), int(y1)), (int(x2) + cols1, int(y2)), (255, 0, 0), 1)
+  return out
 
 
 def rotatedRectWithMaxArea(w, h, angle):

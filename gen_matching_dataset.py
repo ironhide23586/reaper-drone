@@ -33,7 +33,7 @@ from dataset.retriever import HandCurated
 
 MODE = 'train'
 DATASET_DIR = utils.DOWNLOADED_DATASET_DIR
-TOPIC = 'indoor sample real estate fpv drone footage'
+TOPIC = 'fpv footage of drone flying over crowds in high speed fpv'
 
 MAX_VIDEO_DURATION_IN_MINUTES = 10
 MAX_SEARCH_VIDEOS = 5
@@ -114,22 +114,22 @@ if __name__ == '__main__':
             except Exception as e:
                 print('Download aborted. Resaon - ', e)
             i += 1
-
-        ds = HandCurated(local_video_fps, mode=MODE)
-
-        # suffix = generate_slug(2)
-        dirname = '_'.join([search_tag.replace('_' + MODE, ''), ds.tag])
-        viz_dir = 'scratchspace/gt_viz_images/' + dirname
-        data_dir = 'scratchspace/gt_data/' + dirname
-        os.makedirs(viz_dir, exist_ok=True)
-        os.makedirs(data_dir, exist_ok=True)
-        print('Generating dataset...', dirname)
-        for i in tqdm(range(NUM_GEN_PAIRS)):
-            x, y, fm, v = ds.sample_image_pair()
-            fn = '_'.join([str(i), str(y[0].shape[0]), str(fm[1][1] - fm[0][1]), fm[0][0], str(fm[0][1]), str(fm[1][1])])
-            fp = viz_dir + os.sep + fn + '.jpg'
-            cv2.imwrite(fp, v)
-            payload = (x, y[0], fm)
-            fp = data_dir + os.sep + fn + '.pickle'
-            with open(fp, 'wb') as f:
-                pickle.dump(payload, f)
+        if len(local_video_fps) > 0:
+            ds = HandCurated(local_video_fps, mode=MODE)
+            dirname = '_'.join([search_tag.replace('_' + MODE, ''), ds.tag])
+            viz_dir = 'scratchspace/gt_viz_images/' + dirname
+            data_dir = 'scratchspace/gt_data/' + dirname
+            os.makedirs(viz_dir, exist_ok=True)
+            os.makedirs(data_dir, exist_ok=True)
+            print('Generating dataset...', dirname)
+            for i in tqdm(range(NUM_GEN_PAIRS)):
+                x, y, fm, v = ds.sample_image_pair()
+                fn = '_'.join([str(i), str(y[0].shape[0]), str(fm[1][1] - fm[0][1]), fm[0][0], str(fm[0][1]), str(fm[1][1])])
+                fp = viz_dir + os.sep + fn + '.jpg'
+                cv2.imwrite(fp, v)
+                payload = (x, y[0], fm)
+                fp = data_dir + os.sep + fn + '.pickle'
+                with open(fp, 'wb') as f:
+                    pickle.dump(payload, f)
+        else:
+            print('No videos found, moving on....')
