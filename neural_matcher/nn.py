@@ -1,14 +1,17 @@
 import torch
 from torch import nn
 
+import utils
+
 
 class NeuraMatch(nn.Module):
 
     def __init__(self):
         super().__init__()
         self.cutoff_n_points = 20
-        self.heatmap_thresh = nn.Parameter(torch.tensor(.5))
-        self.final_thresh = nn.Parameter(torch.tensor(.5))
+        self.heatmap_thresh = nn.Parameter(torch.tensor(.5), requires_grad=False)
+        self.final_thresh = nn.Parameter(torch.tensor(.5), requires_grad=False)
+
         self.conv0_block_a = nn.Sequential(nn.Conv2d(3, 64, 6, 1, bias=False),
                                            nn.BatchNorm2d(64), nn.LeakyReLU(),
                                            nn.Conv2d(64, 64, 4, 1, bias=False),
@@ -40,16 +43,17 @@ class NeuraMatch(nn.Module):
                                      nn.Linear(16, 1, bias=True),
                                      nn.Sigmoid())
 
-    def filter_matches(self, p_xy_kp_a, p_xy_kp_b, s, f_a, f_b, heatmap_1d):
-        kpi = torch.combinations(torch.arange(0, torch.max(torch.Tensor([p_xy_kp_a.shape[0], p_xy_kp_b.shape[0]]))))
-        if p_xy_kp_b.shape[0] < p_xy_kp_a.shape[0]:
-            f = kpi[:, 1] < torch.min(torch.Tensor([p_xy_kp_a.shape[0], p_xy_kp_b.shape[0]]))
-        else:
-            f = kpi[:, 0] < torch.min(torch.Tensor([p_xy_kp_a.shape[0], p_xy_kp_b.shape[0]]))
-        kpi = kpi[f].int()
-        p_xy_kp_a = p_xy_kp_a[kpi[:, 0]]
-        p_xy_kp_b = p_xy_kp_b[kpi[:, 1]]
-        p_xy_kp_ab = torch.hstack([p_xy_kp_a, p_xy_kp_b])
+        self.desc_condenser = nn.Sequential(nn.Conv2d(32, 32, 3, 1, bias=False),
+                                            nn.BatchNorm2d(32), nn.LeakyReLU(),
+                                            nn.Conv2d(32, 32, 2, 1, bias=False),
+                                            nn.BatchNorm2d(32), nn.LeakyReLU())
+
+        self.heatmap_condenser = nn.Sequential(nn.Conv2d(66, 16, 3, 1, bias=False),
+                                               nn.BatchNorm2d(16), nn.LeakyReLU(),
+                                               nn.Conv2d(16, 2, 2, 1, bias=True),
+                                               nn.Sigmoid())
+
+    def extract_descriptors(self, p_xy_kp_a, p_xy_kp_b, s, f_a, f_b, heatmap_1d):
         p_xy_kp_a_1d = p_xy_kp_a[:, 0] + p_xy_kp_a[:, 1] * s
         p_xy_kp_b_1d = p_xy_kp_b[:, 0] + p_xy_kp_b[:, 1] * s
 
@@ -60,6 +64,19 @@ class NeuraMatch(nn.Module):
 
         f_ab_sel = torch.concat([f_a_sel, f_b_sel], -1)
         y_sel = (torch.squeeze(self.matcher(f_ab_sel)) + heatmap_1d_sel_a + heatmap_1d_sel_b) / 3.
+        return y_sel, f_ab_sel
+
+    def filter_matches(self, p_xy_kp_a, p_xy_kp_b, s, f_a, f_b, heatmap_1d):
+        kpi = torch.combinations(torch.arange(0, torch.max(torch.Tensor([p_xy_kp_a.shape[0], p_xy_kp_b.shape[0]]))))
+        if p_xy_kp_b.shape[0] < p_xy_kp_a.shape[0]:
+            f = kpi[:, 1] < torch.min(torch.Tensor([p_xy_kp_a.shape[0], p_xy_kp_b.shape[0]]))
+        else:
+            f = kpi[:, 0] < torch.min(torch.Tensor([p_xy_kp_a.shape[0], p_xy_kp_b.shape[0]]))
+        kpi = kpi[f].int()
+        p_xy_kp_a = p_xy_kp_a[kpi[:, 0]]
+        p_xy_kp_b = p_xy_kp_b[kpi[:, 1]]
+        p_xy_kp_ab = torch.hstack([p_xy_kp_a, p_xy_kp_b])
+        y_sel, f_ab_sel = self.extract_descriptors(p_xy_kp_a, p_xy_kp_b, s, f_a, f_b, heatmap_1d)
         f_sel = y_sel > self.final_thresh
         return p_xy_kp_ab, y_sel, f_ab_sel, f_sel, kpi
 
@@ -98,8 +115,8 @@ class NeuraMatch(nn.Module):
             (n_p_xy_kp_ab_sel, n_y_conf_sel, n_desc_sel)
 
     def extract_points(self, p_xy, bi, f, f_, heatmap_1d):
-        p_xy_local_a = p_xy[bi][f[bi]]
-        p_xy_local_b = p_xy[bi][f_[bi]]
+        p_xy_local_a = p_xy[0][f[bi]]
+        p_xy_local_b = p_xy[1][f_[bi]]
 
         hm = heatmap_1d[bi][0][f[bi]]
         hmi_a = torch.argsort(hm)[-self.cutoff_n_points:]
@@ -108,13 +125,36 @@ class NeuraMatch(nn.Module):
         hmi_b = torch.argsort(hm)[-self.cutoff_n_points:]
         return p_xy_local_a[hmi_a], p_xy_local_b[hmi_b]
 
+    def hash_match(self, p):
+        a = utils.cantor_fn(p[:, 0], p[:, 1])
+        b = utils.cantor_fn(p[:, 2], p[:, 3])
+        c = utils.cantor_fn(a, b)
+        return c
 
-    def forward(self, x_a, x_b, gt_xy_pairs=None):
-        f_a = self.conv0_block_a(x_a)
-        f_b = self.conv0_block_b(x_b)
+    def remove_gt_pairs(self, mp, cp, dp, match_pxy_gt_hashes_bi):
+        mp = mp.int()
+        mp_hashes = self.hash_match(mp)
+        m_fn = lambda h: True in (match_pxy_gt_hashes_bi == h)
+        hits_f = torch.Tensor(list(map(m_fn, mp_hashes))) == 0
+        mp_ = mp[hits_f]
+        cp_ = cp[hits_f]
+        dp_ = dp[hits_f]
+        return mp_, cp_, dp_
 
-        heatmap = self.conv0_block_ab(torch.concat([x_a, x_b], dim=1))
-        s = f_a.shape[-1]
+    def forward(self, x, gt_xy_pairs=None):
+        x_a = x[:, 0]
+        x_b = x[:, 1]
+        f_a_raw = self.conv0_block_a(x_a)
+        f_b_raw = self.conv0_block_b(x_b)
+
+        heatmap_raw = self.conv0_block_ab(torch.concat([x_a, x_b], dim=1))
+        hm_in = torch.concat([f_a_raw, f_b_raw, heatmap_raw], dim=1)
+        heatmap = self.heatmap_condenser(hm_in)
+
+        f_a = self.desc_condenser(f_a_raw)
+        f_b = self.desc_condenser(f_b_raw)
+
+        s = heatmap.shape[-1]
         r = x_a.shape[-1] / s
         nb = x_a.shape[0]
 
@@ -142,6 +182,11 @@ class NeuraMatch(nn.Module):
         f_n_ = heatmap[:, 1] <= self.heatmap_thresh
         f_n_ = f_n_.reshape(-1, s * s)
 
+        match_pxy_pos_gt = []
+        conf_pxy_pos_gt = []
+        desc_pxy_pos_gt = []
+        match_pxy_gt_hashes = []
+
         match_pxy = []
         conf_pxy = []
         desc_pxy = []
@@ -168,6 +213,16 @@ class NeuraMatch(nn.Module):
 
         for bi in torch.arange(nb):
 
+            if gt_xy_pairs is not None:
+                p_a = (gt_xy_pairs[bi][:, :2] / r).int()
+                p_b = (gt_xy_pairs[bi][:, 2:] / r).int()
+
+                y_conf_sel_gt, desc_sel_gt = self.extract_descriptors(p_a, p_b, s, f_a_1d[bi], f_b_1d[bi], heatmap_1d[bi])
+                match_pxy_pos_gt.append(gt_xy_pairs[bi])
+                conf_pxy_pos_gt.append(y_conf_sel_gt)
+                desc_pxy_pos_gt.append(desc_sel_gt)
+                match_pxy_gt_hashes.append(self.hash_match(gt_xy_pairs[bi]))
+
             p_a, p_b = self.extract_points(p_xy, bi, f, f_, heatmap_1d)
             matches, unmatches, nomatches = self.get_matches(p_a, p_b, s, f_a_1d[bi], f_b_1d[bi], heatmap_1d[bi])
 
@@ -193,19 +248,40 @@ class NeuraMatch(nn.Module):
                 (n_p_xy_kp_ab_sel_, n_y_conf_sel_, n_desc_sel_) = matches_, unmatches_, nomatches_
 
             yi = torch.argsort(y_conf_sel_matched_)[-y_conf_sel_matched.shape[0]:]
+            yi_ = torch.argsort(y_conf_sel_unmatched_)[-y_conf_sel_unmatched.shape[0]:]
             yi_n = torch.argsort(n_y_conf_sel_)[-n_y_conf_sel.shape[0]:]
 
             match_pxy_.append(p_xy_kp_ab_sel_matched_[yi] * r)
             conf_pxy_.append(y_conf_sel_matched_[yi])
             desc_pxy_.append(desc_sel_matched_[yi])
-            un_match_pxy_.append(p_xy_kp_ab_sel_unmatched_[yi] * r)
-            un_conf_pxy_.append(y_conf_sel_unmatched_[yi])
-            un_desc_pxy_.append(desc_sel_unmatched_[yi])
+            un_match_pxy_.append(p_xy_kp_ab_sel_unmatched_[yi_] * r)
+            un_conf_pxy_.append(y_conf_sel_unmatched_[yi_])
+            un_desc_pxy_.append(desc_sel_unmatched_[yi_])
             n_match_pxy_.append(n_p_xy_kp_ab_sel_[yi_n] * r)
             n_conf_pxy_.append(n_y_conf_sel_[yi_n])
             n_desc_pxy_.append(n_desc_sel_[yi_n])
 
+        match_pxy_neg_gt_, conf_pxy_neg_gt_, desc_pxy_neg_gt_ = [], [], []
+        un_match_pxy_neg_gt, un_conf_pxy_neg_gt, un_desc_pxy_neg_gt = [], [], []
+
+        y_out = None
+        if gt_xy_pairs is not None:
+            for bi in torch.arange(nb):
+                mp, cp, dp = self.remove_gt_pairs(match_pxy_[bi], conf_pxy_[bi], desc_pxy_[bi],
+                                                  match_pxy_gt_hashes[bi])
+                match_pxy_neg_gt_.append(mp)
+                conf_pxy_neg_gt_.append(cp)
+                desc_pxy_neg_gt_.append(dp)
+                mp, cp, dp = self.remove_gt_pairs(un_match_pxy[bi], un_conf_pxy[bi], un_desc_pxy[bi],
+                                                  match_pxy_gt_hashes[bi])
+                un_match_pxy_neg_gt.append(mp)
+                un_conf_pxy_neg_gt.append(cp)
+                un_desc_pxy_neg_gt.append(dp)
+            y_out = ((match_pxy_pos_gt, conf_pxy_pos_gt, desc_pxy_pos_gt),
+                     (match_pxy_neg_gt_, conf_pxy_neg_gt_, desc_pxy_neg_gt_),
+                     (un_match_pxy_neg_gt, un_conf_pxy_neg_gt, un_desc_pxy_neg_gt))
+
         return heatmap, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
                          (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
             ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
-             (n_match_pxy_, n_conf_pxy_, n_desc_pxy_))
+             (n_match_pxy_, n_conf_pxy_, n_desc_pxy_)), y_out

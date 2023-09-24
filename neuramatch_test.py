@@ -51,20 +51,33 @@ def collater(data):
     for d in data:
         x = d[0] / 255.
         ims.append(input_transforms(torch.Tensor(x)))
-        pxys.append(torch.Tensor(d[1].astype(int)))
+        pxys.append(torch.Tensor(d[1].astype(int)).int())
         heatmaps.append(d[2])
     heatmaps = torch.Tensor(np.stack(heatmaps))
     ims = torch.stack(ims)
     return ims, pxys, heatmaps
 
 
-
 if __name__ == '__main__':
 
     ds = ImagePairDataset('scratchspace/gt_data', 'train')
     data_loader = DataLoader(ds, 5, collate_fn=collater)
+    loss_fn = KeypointLoss()
+
+
+    nmatch = NeuraMatch()
+    opt = torch.optim.Adam(nmatch.parameters(), lr=8e-5)
 
     for bi, (ims, pxys, heatmaps) in enumerate(data_loader):
+        heatmap, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
+                  (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
+            ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
+             (n_match_pxy_, n_conf_pxy_, n_desc_pxy_)), y_out = nmatch(ims, gt_xy_pairs=pxys)
+        nmatch.zero_grad()
+        loss = loss_fn(y_out)
+        loss.backward()
+        opt.step()
+
         k = 0
 
     matches_xy, heatmaps = ds[56]
