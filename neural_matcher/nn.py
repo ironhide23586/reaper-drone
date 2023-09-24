@@ -6,8 +6,9 @@ import utils
 
 class NeuraMatch(nn.Module):
 
-    def __init__(self):
+    def __init__(self, device):
         super().__init__()
+        self.device = device
         self.cutoff_n_points = 20
         self.heatmap_thresh = nn.Parameter(torch.tensor(.5), requires_grad=False)
         self.final_thresh = nn.Parameter(torch.tensor(.5), requires_grad=False)
@@ -141,9 +142,13 @@ class NeuraMatch(nn.Module):
         dp_ = dp[hits_f]
         return mp_, cp_, dp_
 
-    def forward(self, x, gt_xy_pairs=None):
+    def forward(self, x_, gt_xy_pairs_=None):
+        x = x_.to(self.device)
         x_a = x[:, 0]
         x_b = x[:, 1]
+        if gt_xy_pairs_ is not None:
+            gt_xy_pairs = [p.to(self.device) for p in gt_xy_pairs_]
+
         f_a_raw = self.conv0_block_a(x_a)
         f_b_raw = self.conv0_block_b(x_b)
 
