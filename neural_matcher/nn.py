@@ -100,7 +100,7 @@ class NeuraMatch(nn.Module):
         qi = torch.unique(kpi_sel_qis)
         pi = []
         pi_n = []
-        ni_sel = torch.arange(p_xy_kp_ab_sel.shape[0])
+        ni_sel = torch.arange(p_xy_kp_ab_sel.shape[0]).to(self.device)
         for q in qi:
             fq = kpi_sel_qis == q
             y_conf_sel_local = y_conf_sel[fq]
@@ -217,7 +217,7 @@ class NeuraMatch(nn.Module):
         n_conf_pxy_ = []
         n_desc_pxy_ = []
 
-        for bi in torch.arange(nb):
+        for bi in torch.arange(nb).to(self.device):
 
             if gt_xy_pairs is not None:
                 p_a = (gt_xy_pairs[bi][:, :2] / r).int()
@@ -272,7 +272,7 @@ class NeuraMatch(nn.Module):
 
         y_out = None
         if gt_xy_pairs is not None:
-            for bi in torch.arange(nb):
+            for bi in torch.arange(nb).to(self.device):
                 mp, cp, dp = self.remove_gt_pairs(match_pxy_[bi], conf_pxy_[bi], desc_pxy_[bi],
                                                   match_pxy_gt_hashes[bi])
                 match_pxy_neg_gt_.append(mp)
