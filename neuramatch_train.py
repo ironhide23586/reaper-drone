@@ -145,13 +145,13 @@ if __name__ == '__main__':
     cv2.imwrite(hb, heatmap_b)
 
     for ei in range(NUM_EPOCHS):
-        for bi, (ims, pxys, heatmaps) in enumerate(tqdm(data_loader)):
-            heatmap, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
+        for bi, (ims, pxys, heatmaps_gt) in enumerate(tqdm(data_loader)):
+            heatmaps_pred, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
                       (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
                 ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
                  (n_match_pxy_, n_conf_pxy_, n_desc_pxy_)), y_out = nmatch(ims, pxys)
             nmatch.zero_grad()
-            loss = loss_fn(y_out)
+            loss = loss_fn(y_out, heatmaps_pred, heatmaps_gt)
             loss.backward()
             opt.step()
 

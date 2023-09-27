@@ -1,3 +1,17 @@
+"""  _
+    |_|_
+   _  | |
+ _|_|_|_|_
+|_|_|_|_|_|_
+  |_|_|_|_|_|
+    | | |_|
+    |_|_
+      |_|
+
+Author: Souham Biswas
+Website: https://www.linkedin.com/in/souham/
+"""
+
 import torch
 from torch import nn
 
@@ -7,10 +21,21 @@ class KeypointLoss(nn.Module):
     def __init__(self):
         super(KeypointLoss, self).__init__()
 
-    def forward(self, y_out, smooth=1., alpha=.7, gamma=.75):
+    def loss_compute(self, y_pred, y_true, smooth=1., alpha=.7, gamma=.75):
+        tp = torch.sum(y_true * y_pred)
+        fp = torch.sum((1. - y_true) * y_pred)
+        fn = torch.sum(y_true * (1. - y_pred))
+        l = (tp + smooth) / (tp + (alpha * fn) + ((1 - alpha) * fp + smooth))
+        tversky_loss = 1. - l
+        focal_tversky_loss = torch.float_power(tversky_loss, gamma)
+        return focal_tversky_loss
+
+    def forward(self, y_out, hm_pred, hm_gt, smooth=1., alpha=.7, gamma=.75):
         (match_pxy_pos_gt, conf_pxy_pos_gt, desc_pxy_pos_gt), \
             (match_pxy_neg_gt_, conf_pxy_neg_gt_, desc_pxy_neg_gt_), \
             (un_match_pxy_neg_gt, un_conf_pxy_neg_gt, un_desc_pxy_neg_gt) = y_out
+
+        loss_hm = self.loss_compute(hm_pred, hm_gt)
 
         pos_outs = torch.hstack(conf_pxy_pos_gt)
         neg_y_outs_ = torch.hstack(conf_pxy_neg_gt_)
@@ -28,13 +53,7 @@ class KeypointLoss(nn.Module):
         y_true = torch.zeros_like(y_pred)
         y_true[:yp.shape[0]] = 1.
 
-        tp = torch.sum(y_true * y_pred)
-        fp = torch.sum((1. - y_true) * y_pred)
-        fn = torch.sum(y_true * (1. - y_pred))
+        focal_tversky_loss = self.loss_compute(y_true, y_pred, smooth, alpha, gamma)
 
-        l = (tp + smooth) / (tp + (alpha * fn) + ((1 - alpha) * fp + smooth))
-        tversky_loss = 1. - l
-        focal_tvesky_loss = torch.float_power(tversky_loss, gamma)
-
-        return focal_tvesky_loss
+        return focal_tversky_loss + loss_hm
 
