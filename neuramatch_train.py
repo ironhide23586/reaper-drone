@@ -109,11 +109,15 @@ if __name__ == '__main__':
             if bi % 50 == 0:
                 print('Loss:', sess_id_, '-', loss)
 
-            if bi % 100 == 0:
+            if bi % 800 == 0:
                 fn = 'neuramatch-' + sess_id_ + '.pt'
                 out_fp = model_dir + '/' + fn
                 print('Saving to', out_fp)
                 torch.save(nmatch.state_dict(), out_fp)
+        fn = 'neuramatch-' + sess_id_ + '-EPOCH.pt'
+        out_fp = model_dir + '/' + fn
+        print('Saving to', out_fp)
+        torch.save(nmatch.state_dict(), out_fp)
 
     #
     # matches_xy, heatmaps = ds[56]
