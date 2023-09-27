@@ -151,7 +151,7 @@ if __name__ == '__main__':
                 ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
                  (n_match_pxy_, n_conf_pxy_, n_desc_pxy_)), y_out = nmatch(ims, pxys)
             nmatch.zero_grad()
-            loss = loss_fn(y_out, heatmaps_pred, heatmaps_gt)
+            loss = loss_fn(y_out, heatmaps_pred, heatmaps_gt.to(device))
             loss.backward()
             opt.step()
 
