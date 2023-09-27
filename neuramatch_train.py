@@ -78,7 +78,7 @@ if __name__ == '__main__':
     model_dir = out_dir + '/model_files'
     os.makedirs(model_dir, exist_ok=True)
     ds = ImagePairDataset('scratchspace/gt_data', 'train')
-    data_loader = DataLoader(ds, 5, collate_fn=collater, num_workers=cpu_count())
+    data_loader = DataLoader(ds, BATCH_SIZE, collate_fn=collater, num_workers=cpu_count())
     loss_fn = KeypointLoss()
 
     train_config = {'learn_rate': LEARN_RATE,
