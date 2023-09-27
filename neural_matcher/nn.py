@@ -108,7 +108,10 @@ class NeuraMatch(nn.Module):
             pi.append(ni_sel[fq][fi])
             pi_n.append(torch.hstack([ni_sel[fq][:fi], ni_sel[fq][fi + 1:]]))
         pi = torch.Tensor(pi).int()
-        pi_n = torch.hstack(pi_n)
+        if len(pi_n) > 0:
+            pi_n = torch.hstack(pi_n)
+        else:
+            pi_n = torch.Tensor([]).int().to(self.device)
         p_xy_kp_ab_sel_matched, y_conf_sel_matched, desc_sel_matched = p_xy_kp_ab_sel[pi], y_conf_sel[pi], desc_sel[pi]
         p_xy_kp_ab_sel_unmatched, y_conf_sel_unmatched, desc_sel_unmatched = p_xy_kp_ab_sel[pi_n], y_conf_sel[pi_n], \
             desc_sel[pi_n]
@@ -147,6 +150,7 @@ class NeuraMatch(nn.Module):
         x = x_.to(self.device)
         x_a = x[:, 0]
         x_b = x[:, 1]
+        gt_xy_pairs = None
         if gt_xy_pairs_ is not None:
             gt_xy_pairs = [p.to(self.device) for p in gt_xy_pairs_]
 
