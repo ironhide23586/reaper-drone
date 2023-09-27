@@ -169,8 +169,8 @@ class NeuraMatch(nn.Module):
 
         grid_x, grid_y = torch.meshgrid(torch.arange(0, s), torch.arange(0, s), indexing='xy')
 
-        grid_x = torch.tile(torch.unsqueeze(torch.unsqueeze(grid_x, 0), 0), (2, 1, 1, 1))
-        grid_y = torch.tile(torch.unsqueeze(torch.unsqueeze(grid_y, 0), 0), (2, 1, 1, 1))
+        grid_x = torch.tile(torch.unsqueeze(torch.unsqueeze(grid_x.to(self.device), 0), 0), (2, 1, 1, 1))
+        grid_y = torch.tile(torch.unsqueeze(torch.unsqueeze(grid_y.to(self.device), 0), 0), (2, 1, 1, 1))
 
         grid_xy = torch.concat([grid_x, grid_y], dim=1)
         p_xy = torch.moveaxis(grid_xy.reshape(-1, 2, s * s), 1, -1)
