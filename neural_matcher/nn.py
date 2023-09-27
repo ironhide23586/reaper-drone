@@ -305,7 +305,7 @@ class NeuraMatch(nn.Module):
             y_out = ((match_pxy_pos_gt, conf_pxy_pos_gt, desc_pxy_pos_gt),
                      (match_pxy_neg_gt_, conf_pxy_neg_gt_, desc_pxy_neg_gt_),
                      (un_match_pxy_neg_gt, un_conf_pxy_neg_gt, un_desc_pxy_neg_gt))
-        hm = transforms.Resize(x_a.shape[-1], interpolation=transforms.InterpolationMode.NEAREST_EXACT)(heatmap)
+        hm = transforms.Resize(x_a.shape[-1], interpolation=transforms.InterpolationMode.BILINEAR)(heatmap)
         return hm, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
                          (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
             ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
