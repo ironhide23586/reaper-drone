@@ -52,8 +52,8 @@ def viz_matches(masked_matches, a, b, heatmap):
     pxy_matches, conf_matches, desc_matches = masked_matches
     img = utils.drawMatches(a, pxy_matches[0][:, :2].detach().cpu().numpy(),
                             b, pxy_matches[0][:, 2:].detach().cpu().numpy())
-    hm_a = (heatmap[0][0].detach().numpy() * 255).astype(np.uint8)
-    hm_b = (heatmap[0][1].detach().numpy() * 255).astype(np.uint8)
+    hm_a = (heatmap[0][0].detach().cpu().numpy() * 255).astype(np.uint8)
+    hm_b = (heatmap[0][1].detach().cpu().numpy() * 255).astype(np.uint8)
     return img, hm_a, hm_b
 
 
