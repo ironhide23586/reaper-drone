@@ -35,6 +35,10 @@ def create_heatmap(pxy, s):
   return m
 
 
+def cantor_fn(x, y):  # maps 2 ints to a unique integer
+  return (((x ** 2) + x + (2 * x * y) + (3 * y) + (y ** 2)) / 2).long()
+
+
 def rotate_image(image, angle, remove_black_patches=True):
   image_center = tuple(np.array(image.shape[1::-1]) / 2)
   rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)

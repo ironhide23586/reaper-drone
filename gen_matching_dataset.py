@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
     print('Asking ChatGPT for video title suggestions related to topic:', TOPIC)
     messages = [{"role": "system", "content":
-                 "You are a intelligent assistant. You will be given a topic. Suggest relevant youtube search queries for videos relevant to the given topic"}]
+                 "You are an intelligent assistant. You will be given a topic. Suggest relevant youtube search queries for videos relevant to the given topic"}]
     m = {'role': 'user', 'content': TOPIC}
     messages.append(m)
     chat = openai.ChatCompletion.create(
