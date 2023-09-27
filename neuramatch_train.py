@@ -12,10 +12,10 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-LEARN_RATE = 1e-8
+LEARN_RATE = 8e-5
 SIDE = 480
-BATCH_SIZE = 5
-NUM_EPOCHS = 1000
+BATCH_SIZE = 16
+NUM_EPOCHS = 100000
 
 import os
 import json
