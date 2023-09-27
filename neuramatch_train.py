@@ -136,6 +136,7 @@ if __name__ == '__main__':
     match_viz, heatmap_a, heatmap_b, masked_outs = infer_nn(nmatch, ima, imb)
     fn_prefix = '_'.join(['viz', sess_id])
     suffix = '-'.join([str(ei) + 'e', str(bi) + 'b', str(masked_outs[0][0].shape[0]) + 'kp'])
+    print('VIZ:', suffix)
     mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'matches', suffix + '.jpg'])])
     ha = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-a', suffix + '.png'])])
     hb = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-b', suffix + '.png'])])
