@@ -38,6 +38,9 @@ class ImagePairDataset(Dataset):
 
     def __getitem__(self, idx):
         i = self.ni[idx]
+        if idx == self.sz - 1:
+            np.random.shuffle(self.ni)
+            print('Epoch finished, shuffled indices....')
         with open(self.fpaths[i], 'rb') as f:
             payload = pickle.load(f)
         im_ab, matches_xy, metadata = payload

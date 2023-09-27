@@ -15,10 +15,12 @@ Website: https://www.linkedin.com/in/souham/
 LEARN_RATE = 1e-8
 SIDE = 480
 BATCH_SIZE = 5
+NUM_EPOCHS = 1000
 
 import os
 import json
 from datetime import datetime
+from multiprocessing import cpu_count
 
 import pytz
 import torch
@@ -76,7 +78,7 @@ if __name__ == '__main__':
     model_dir = out_dir + '/model_files'
     os.makedirs(model_dir, exist_ok=True)
     ds = ImagePairDataset('scratchspace/gt_data', 'train')
-    data_loader = DataLoader(ds, 5, collate_fn=collater)
+    data_loader = DataLoader(ds, 5, collate_fn=collater, num_workers=cpu_count())
     loss_fn = KeypointLoss()
 
     train_config = {'learn_rate': LEARN_RATE,
@@ -91,24 +93,27 @@ if __name__ == '__main__':
     nmatch.to(device)
     opt = torch.optim.Adam(nmatch.parameters(), lr=LEARN_RATE)
 
-    for bi, (ims, pxys, heatmaps) in enumerate(tqdm(data_loader)):
-        heatmap, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
-                  (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
-            ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
-             (n_match_pxy_, n_conf_pxy_, n_desc_pxy_)), y_out = nmatch(ims, pxys)
-        nmatch.zero_grad()
-        loss = loss_fn(y_out)
-        loss.backward()
-        opt.step()
+    for ei in range(NUM_EPOCHS):
+        for bi, (ims, pxys, heatmaps) in enumerate(tqdm(data_loader)):
+            heatmap, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
+                      (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
+                ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
+                 (n_match_pxy_, n_conf_pxy_, n_desc_pxy_)), y_out = nmatch(ims, pxys)
+            nmatch.zero_grad()
+            loss = loss_fn(y_out)
+            loss.backward()
+            opt.step()
 
-        if bi % 50 == 0:
-            print(sess_id, '-', loss)
+            suffix = '-'.join([str(ei) + 'e', str(bi) + 'b'])
+            sess_id_ = sess_id + '_' + suffix
+            if bi % 50 == 0:
+                print('Loss:', sess_id_, '-', loss)
 
-        if bi % 100 == 0:
-            fn = 'neuramatch-' + sess_id + '-' + str(bi) + '.pt'
-            out_fp = model_dir + '/' + fn
-            print('Saving to', out_fp)
-            torch.save(nmatch.state_dict(), out_fp)
+            if bi % 100 == 0:
+                fn = 'neuramatch-' + sess_id_ + '.pt'
+                out_fp = model_dir + '/' + fn
+                print('Saving to', out_fp)
+                torch.save(nmatch.state_dict(), out_fp)
 
     #
     # matches_xy, heatmaps = ds[56]
