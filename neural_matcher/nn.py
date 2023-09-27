@@ -68,7 +68,8 @@ class NeuraMatch(nn.Module):
         return y_sel, f_ab_sel
 
     def filter_matches(self, p_xy_kp_a, p_xy_kp_b, s, f_a, f_b, heatmap_1d):
-        kpi = torch.combinations(torch.arange(0, torch.max(torch.Tensor([p_xy_kp_a.shape[0], p_xy_kp_b.shape[0]]))))
+        kpi = torch.combinations(torch.arange(0, torch.max(torch.Tensor([p_xy_kp_a.shape[0],
+                                                                         p_xy_kp_b.shape[0]]))).to(self.device))
         if p_xy_kp_b.shape[0] < p_xy_kp_a.shape[0]:
             f = kpi[:, 1] < torch.min(torch.Tensor([p_xy_kp_a.shape[0], p_xy_kp_b.shape[0]]))
         else:
