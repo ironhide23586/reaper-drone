@@ -52,10 +52,10 @@ class NeuraMatch(nn.Module):
                                             nn.Conv2d(32, 2, 3, 1, bias=True),
                                             nn.Sigmoid())
 
-        self.matcher = nn.Sequential(nn.Linear(64, 32, bias=False),
-                                     nn.BatchNorm1d(32),
-                                     nn.Linear(32, 16, bias=False),
-                                     nn.BatchNorm1d(16),
+        self.matcher = nn.Sequential(nn.Linear(64, 32, bias=True),
+                                     nn.LeakyReLU(),
+                                     nn.Linear(32, 16, bias=True),
+                                     nn.LeakyReLU(),
                                      nn.Linear(16, 1, bias=True),
                                      nn.Sigmoid())
 
