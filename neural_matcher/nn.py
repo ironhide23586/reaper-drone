@@ -59,14 +59,14 @@ class NeuraMatch(nn.Module):
                                      nn.Linear(16, 1, bias=True),
                                      nn.Sigmoid())
 
-        self.desc_condenser = nn.Sequential(nn.Conv2d(32, 32, 3, 1, bias=False),
+        self.desc_condenser = nn.Sequential(nn.ConvTranspose2d(32, 32, 6, 1, bias=False),
                                             nn.BatchNorm2d(32), nn.LeakyReLU(),
-                                            nn.Conv2d(32, 32, 2, 1, bias=False),
+                                            nn.ConvTranspose2d(32, 32, 6, 1, bias=False),
                                             nn.BatchNorm2d(32), nn.LeakyReLU())
 
-        self.heatmap_condenser = nn.Sequential(nn.Conv2d(66, 16, 3, 1, bias=False),
+        self.heatmap_condenser = nn.Sequential(nn.ConvTranspose2d(66, 16, 6, 1, bias=False),
                                                nn.BatchNorm2d(16), nn.LeakyReLU(),
-                                               nn.Conv2d(16, 2, 2, 1, bias=True),
+                                               nn.ConvTranspose2d(16, 2, 6, 1, bias=True),
                                                nn.Sigmoid())
 
     def extract_descriptors(self, p_xy_kp_a, p_xy_kp_b, s, f_a, f_b, heatmap_1d):
@@ -305,9 +305,9 @@ class NeuraMatch(nn.Module):
             y_out = ((match_pxy_pos_gt, conf_pxy_pos_gt, desc_pxy_pos_gt),
                      (match_pxy_neg_gt_, conf_pxy_neg_gt_, desc_pxy_neg_gt_),
                      (un_match_pxy_neg_gt, un_conf_pxy_neg_gt, un_desc_pxy_neg_gt))
-        hm = transforms.Resize(x_a.shape[-1], interpolation=transforms.InterpolationMode.BILINEAR,
-                               antialias=True)(heatmap)
-        return hm, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
+        # hm = transforms.Resize(x_a.shape[-1], interpolation=transforms.InterpolationMode.BILINEAR,
+        #                        antialias=True)(heatmap)
+        return heatmap, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
                          (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
             ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
              (n_match_pxy_, n_conf_pxy_, n_desc_pxy_)), y_out

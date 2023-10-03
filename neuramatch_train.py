@@ -17,6 +17,7 @@ SIDE = 480
 BATCH_SIZE = 10
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
+BLEND_COEFF = .55
 
 import os
 import json
@@ -112,7 +113,7 @@ if __name__ == '__main__':
     viz_dir = out_dir + '/viz'
     os.makedirs(viz_dir, exist_ok=True)
 
-    ds = ImagePairDataset('scratchspace/gt_data', 'train')
+    ds = ImagePairDataset('scratchspace/gt_data', 'train', blend_coeff=BLEND_COEFF)
     data_loader = DataLoader(ds, BATCH_SIZE, collate_fn=collater, num_workers=cpu_count())
     loss_fn = KeypointLoss()
 

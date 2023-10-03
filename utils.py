@@ -27,10 +27,39 @@ HAND_CURATED_DATASET_DIR = DATASET_DIR + os.sep + 'hand_curated'
 DOWNLOADED_DATASET_DIR = DATASET_DIR + os.sep + 'downloaded'
 
 
-def create_heatmap(pxy, s):
-  m = np.zeros(s * s, dtype=np.uint8)
+def draw_points(m, pxy_, mag, s, blend_coeff=.55):
+  pxy = np.clip(pxy_, 0, s - 1)
   pxy_1d = (pxy[:, 0].astype(int) + (pxy[:, 1].astype(int) * s))
-  m[pxy_1d] = 1
+  m[pxy_1d] = np.maximum((blend_coeff * mag) + ((1. - blend_coeff) * m[pxy_1d]), m[pxy_1d])
+
+def makeGaussian(size, fwhm_scale=.7, center=None):
+  """
+  from https://gist.github.com/andrewgiessel/4635563
+  Make a square gaussian kernel.
+  size is the length of a side of the square
+  fwhm is full-width-half-maximum, which
+  can be thought of as an effective radius.
+  """
+  fwhm = fwhm_scale * size
+  x = np.arange(0, size, 1, float)
+  y = x[:, np.newaxis]
+  if center is None:
+    x0 = y0 = size // 2
+  else:
+    x0 = center[0]
+    y0 = center[1]
+  k = np.exp(-4 * np.log(2) * ((x - x0) ** 2 + (y - y0) ** 2) / fwhm ** 2)
+  k[y0, x0] = 1.
+  return k
+
+
+def create_heatmap(pxy, s, ksize=23, radius_scale=.6, blend_coeff=.55):
+  m = np.zeros(s * s, dtype=float)
+  kernel = makeGaussian(ksize, fwhm_scale=radius_scale)
+  offset = ksize // 2
+  for i in range(-offset, offset):
+    for j in range(-offset, offset):
+      draw_points(m, pxy + [i, j], kernel[i + offset, j + offset], s, blend_coeff)
   m = m.reshape([s, s])
   return m
 

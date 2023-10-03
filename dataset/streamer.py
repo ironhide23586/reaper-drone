@@ -24,8 +24,9 @@ import utils
 
 class ImagePairDataset(Dataset):
 
-    def __init__(self, data_dir, mode):
+    def __init__(self, data_dir, mode, blend_coeff=.55):
         super().__init__()
+        self.blend_coeff = blend_coeff
         self.data_dir = data_dir
         dirs = glob(data_dir + '/*_' + mode)
         self.fpaths = np.hstack([glob(d + '/*') for d in dirs])
@@ -45,10 +46,11 @@ class ImagePairDataset(Dataset):
             payload = pickle.load(f)
         im_ab, matches_xy, metadata = payload
 
-        k = utils.create_heatmap(matches_xy[:, :2], im_ab.shape[-1])
-        k_ = utils.create_heatmap(matches_xy[:, 2:], im_ab.shape[-1])
+        k = utils.create_heatmap(matches_xy[:, :2], im_ab.shape[-1], blend_coeff=self.blend_coeff)
+        k_ = utils.create_heatmap(matches_xy[:, 2:], im_ab.shape[-1], blend_coeff=self.blend_coeff)
         heatmaps = np.stack([k, k_])
 
+        # import cv2
         # cv2.imwrite('k.png', k * 255)
         # cv2.imwrite('k_.png', k_ * 255)
         # im_ab_viz = utils.drawMatches(np.rollaxis(im_ab[0], 0, 3), matches_xy[:, :2],
