@@ -24,10 +24,7 @@ class KeypointLoss(nn.Module):
         self.alpha = alpha
         self.gamma = gamma
 
-    def loss_compute(self, y_pred, y_true):
-        smooth = self.smooth
-        alpha = self.alpha
-        gamma = self.gamma
+    def loss_compute(self, y_pred, y_true, smooth, alpha, gamma):
         tp = torch.sum(y_true * y_pred)
         fp = torch.sum((1. - y_true) * y_pred)
         fn = torch.sum(y_true * (1. - y_pred))
@@ -41,7 +38,7 @@ class KeypointLoss(nn.Module):
             (match_pxy_neg_gt_, conf_pxy_neg_gt_, desc_pxy_neg_gt_), \
             (un_match_pxy_neg_gt, un_conf_pxy_neg_gt, un_desc_pxy_neg_gt) = y_out
 
-        loss_hm = self.loss_compute(hm_pred, hm_gt, smooth, alpha, gamma)
+        loss_hm = self.loss_compute(hm_pred, hm_gt, self.smooth, self.alpha, self.gamma)
         #
         # pos_outs = torch.hstack(conf_pxy_pos_gt)
         # neg_y_outs_ = torch.hstack(conf_pxy_neg_gt_)
