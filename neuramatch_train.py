@@ -226,7 +226,7 @@ if __name__ == '__main__':
                 val_df_dict['precision'].append(score_dict['precision'])
                 val_df_dict['recall'].append(score_dict['recall'])
                 val_df_dict['val_loss'].append(score_dict['val_loss'])
-                val_df_dict['train_loss'].append(float(loss.cpu().numpy()))
+                val_df_dict['train_loss'].append(float(loss.detach().cpu().numpy()))
                 val_df_dict['num_samples'].append(score_dict['num_samples'])
 
                 val_df = pd.DataFrame(val_df_dict)
