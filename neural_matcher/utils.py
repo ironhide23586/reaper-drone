@@ -103,7 +103,7 @@ def score_model(nmatch, data_loader, loss_fn, device):
 
 
 def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
-                     log_fname, val_df_dict, side):
+                     log_fname, val_df_dict, side, viz_dir):
     nmatch.eval()
     suffix = '-'.join([str(ei) + 'e', str(bi) + 'b'])
     sess_id_ = sess_id + '_' + suffix

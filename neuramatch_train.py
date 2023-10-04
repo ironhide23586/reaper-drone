@@ -114,7 +114,7 @@ if __name__ == '__main__':
                    'num_samples': []}
 
     checkpoint_model(nmatch, None, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
-                     val_df_dict, SIDE)
+                     val_df_dict, SIDE, viz_dir)
 
     for ei in range(NUM_EPOCHS):
         nmatch.train()
@@ -133,7 +133,7 @@ if __name__ == '__main__':
 
             if bi % SAVE_EVERY_N_BATCHES == 0:
                 checkpoint_model(nmatch, loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
-                                 log_fname, val_df_dict, SIDE)
+                                 log_fname, val_df_dict, SIDE, viz_dir)
             nmatch.train()
         checkpoint_model(nmatch, loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
-                         log_fname, val_df_dict, SIDE)
+                         log_fname, val_df_dict, SIDE, viz_dir)
