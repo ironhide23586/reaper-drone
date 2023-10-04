@@ -115,9 +115,7 @@ if __name__ == '__main__':
                    'train_loss': [],
                    'num_samples': []}
 
-    suffix = '-'.join([str(ei) + 'e', str(bi) + 'b'])
-    sess_id_ = sess_id + '_' + suffix
-    checkpoint_model(nmatch, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id_, log_fname,
+    checkpoint_model(nmatch, loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
                      val_df_dict)
 
     for ei in range(NUM_EPOCHS):
@@ -131,12 +129,11 @@ if __name__ == '__main__':
             loss.backward()
             opt.step()
 
-            suffix = '-'.join([str(ei) + 'e', str(bi) + 'b'])
-            sess_id_ = sess_id + '_' + suffix
             if bi % 50 == 0:
-                print('Loss:', sess_id_, '-', loss)
+                print('Loss:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', loss)
+
             if bi % SAVE_EVERY_N_BATCHES == 0:
-                checkpoint_model(nmatch, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id_,
+                checkpoint_model(nmatch, loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
                                  log_fname, val_df_dict)
-        checkpoint_model(nmatch, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id_, log_fname,
-                         val_df_dict)
+        checkpoint_model(nmatch, loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
+                         log_fname, val_df_dict)

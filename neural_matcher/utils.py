@@ -103,7 +103,10 @@ def score_model(nmatch, data_loader, loss_fn, device):
     return score_dict
 
 
-def checkpoint_model(nmatch, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id_, log_fname, val_df_dict):
+def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
+                     log_fname, val_df_dict):
+    suffix = '-'.join([str(ei) + 'e', str(bi) + 'b'])
+    sess_id_ = sess_id + '_' + suffix
     score_dict = score_model(nmatch, data_loader_val, loss_fn, device)
     val_df_dict['epoch'].append(ei)
     val_df_dict['epoch_batch_iteration'].append(bi)
@@ -111,7 +114,7 @@ def checkpoint_model(nmatch, device, data_loader_val, ima, imb, model_dir, loss_
     val_df_dict['precision'].append(score_dict['precision'])
     val_df_dict['recall'].append(score_dict['recall'])
     val_df_dict['val_loss'].append(score_dict['val_loss'])
-    val_df_dict['train_loss'].append(float(loss.detach().cpu().numpy()))
+    val_df_dict['train_loss'].append(float(train_loss.detach().cpu().numpy()))
     val_df_dict['num_samples'].append(score_dict['num_samples'])
 
     score_tag = '_' + str(score_dict['final_score']) + '-fsc'
