@@ -32,6 +32,7 @@ def draw_points(m, pxy_, mag, s, blend_coeff=.55):
   pxy_1d = (pxy[:, 0].astype(int) + (pxy[:, 1].astype(int) * s))
   m[pxy_1d] = np.maximum((blend_coeff * mag) + ((1. - blend_coeff) * m[pxy_1d]), m[pxy_1d])
 
+
 def makeGaussian(size, fwhm_scale=.7, center=None):
   """
   from https://gist.github.com/andrewgiessel/4635563

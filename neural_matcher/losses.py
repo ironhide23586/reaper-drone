@@ -18,16 +18,19 @@ from torch import nn
 
 class KeypointLoss(nn.Module):
 
-    def __init__(self):
+    def __init__(self, smooth=1., alpha=.6, gamma=.75):
         super(KeypointLoss, self).__init__()
+        self.smooth = smooth
+        self.alpha = alpha
+        self.gamma = gamma
 
-    def loss_compute(self, y_pred, y_true, smooth=1., alpha=.6, gamma=.75):
+    def loss_compute(self, y_pred, y_true):
+        smooth = self.smooth
+        alpha = self.alpha
+        gamma = self.gamma
         tp = torch.sum(y_true * y_pred)
         fp = torch.sum((1. - y_true) * y_pred)
         fn = torch.sum(y_true * (1. - y_pred))
-        # prec = tp / (tp + fp)
-        # rec = tp / (tp + fn)
-        # fsc = (2 * prec * rec) / (prec + rec)
         l = (tp + smooth) / (tp + (alpha * fn) + ((1 - alpha) * fp + smooth))
         tversky_loss = 1. - l
         focal_tversky_loss = torch.float_power(tversky_loss, gamma)
