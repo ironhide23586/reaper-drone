@@ -115,7 +115,7 @@ if __name__ == '__main__':
                    'train_loss': [],
                    'num_samples': []}
 
-    checkpoint_model(nmatch, loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
+    checkpoint_model(nmatch, None, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
                      val_df_dict)
 
     for ei in range(NUM_EPOCHS):

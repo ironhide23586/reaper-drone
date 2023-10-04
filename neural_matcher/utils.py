@@ -114,7 +114,10 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
     val_df_dict['precision'].append(score_dict['precision'])
     val_df_dict['recall'].append(score_dict['recall'])
     val_df_dict['val_loss'].append(score_dict['val_loss'])
-    val_df_dict['train_loss'].append(float(train_loss.detach().cpu().numpy()))
+    if train_loss is not None:
+        val_df_dict['train_loss'].append(float(train_loss.detach().cpu().numpy()))
+    else:
+        val_df_dict['train_loss'].append(-1.)
     val_df_dict['num_samples'].append(score_dict['num_samples'])
 
     score_tag = '_' + str(score_dict['final_score']) + '-fsc'
