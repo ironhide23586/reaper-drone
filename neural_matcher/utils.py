@@ -38,18 +38,18 @@ def collater(data):
     return ims, pxys, heatmaps
 
 
-def input_preprocess(im):
+def input_preprocess(im, side):
     min_s = min(im.width, im.height)
     x_offset = (im.width - min_s) // 2
     y_offset = (im.height - min_s) // 2
     frame_square = np.array(im)[y_offset: y_offset + min_s, x_offset: x_offset + min_s]
-    frame_square = cv2.resize(frame_square, (SIDE, SIDE))[:, :, [2, 1, 0]]
+    frame_square = cv2.resize(frame_square, (side, side))[:, :, [2, 1, 0]]
     return frame_square
 
 
-def infer_nn(nmatch, ima, imb):
-    ima_pp = input_preprocess(ima)
-    imb_pp = input_preprocess(imb)
+def infer_nn(nmatch, ima, imb, side, device):
+    ima_pp = input_preprocess(ima, side)
+    imb_pp = input_preprocess(imb, side)
     im_a = tensor_transform(ima_pp).to(device)
     im_b = tensor_transform(imb_pp).to(device)
     t = torch.unsqueeze(torch.stack([input_transforms(im_a), input_transforms(im_b)]), 0)
@@ -103,7 +103,7 @@ def score_model(nmatch, data_loader, loss_fn, device):
 
 
 def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
-                     log_fname, val_df_dict):
+                     log_fname, val_df_dict, side):
     nmatch.eval()
     suffix = '-'.join([str(ei) + 'e', str(bi) + 'b'])
     sess_id_ = sess_id + '_' + suffix
@@ -129,7 +129,7 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
     print('Saving to', out_fp)
     torch.save(nmatch.state_dict(), out_fp)
 
-    match_viz, heatmap_a, heatmap_b, masked_outs = infer_nn(nmatch, ima, imb)
+    match_viz, heatmap_a, heatmap_b, masked_outs = infer_nn(nmatch, ima, imb, side, device)
     fn_prefix = '_'.join(['viz', sess_id])
     suffix = '-'.join([str(ei) + 'e', str(bi) + 'b', str(masked_outs[0][0].shape[0]) + 'kp'])
     print('VIZ:', suffix)
