@@ -99,8 +99,6 @@ if __name__ == '__main__':
         print('Loaded!')
     else:
         print('Training from scratch...')
-
-    nmatch.train()
     opt = torch.optim.Adam(nmatch.parameters(), lr=LEARN_RATE)
 
     bi = 0
@@ -119,6 +117,7 @@ if __name__ == '__main__':
                      val_df_dict)
 
     for ei in range(NUM_EPOCHS):
+        nmatch.train()
         for bi, (ims, pxys, heatmaps_gt) in enumerate(tqdm(data_loader)):
             heatmaps_pred, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
                       (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
@@ -135,5 +134,6 @@ if __name__ == '__main__':
             if bi % SAVE_EVERY_N_BATCHES == 0:
                 checkpoint_model(nmatch, loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
                                  log_fname, val_df_dict)
+            nmatch.train()
         checkpoint_model(nmatch, loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
                          log_fname, val_df_dict)

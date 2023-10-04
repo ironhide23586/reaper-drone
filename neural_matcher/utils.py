@@ -64,7 +64,6 @@ def infer_nn(nmatch, ima, imb):
 
 def score_model(nmatch, data_loader, loss_fn, device):
     print('Scoring model...')
-    nmatch.eval()
     score_dict = {'final_score': -1.,
                   'precision': -1.,
                   'recall': -1.,
@@ -105,6 +104,7 @@ def score_model(nmatch, data_loader, loss_fn, device):
 
 def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
                      log_fname, val_df_dict):
+    nmatch.eval()
     suffix = '-'.join([str(ei) + 'e', str(bi) + 'b'])
     sess_id_ = sess_id + '_' + suffix
     score_dict = score_model(nmatch, data_loader_val, loss_fn, device)
