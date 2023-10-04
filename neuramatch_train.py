@@ -12,7 +12,7 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = 'scratchspace/trained_models/little-mamba.04-10-2023.08_39_11/model_files/neuramatch-little-mamba_43e-600b_0.4382777430401284-fsc.pt'
+RESUME_MODEL_FPATH = 'scratchspace/trained_models/little-mamba.04-10-2023.08_39_11/model_files/neuramatch-little-mamba_50e-600b_0.43906313267958846-fsc.pt'
 
 LEARN_RATE = 8e-5
 SIDE = 480
