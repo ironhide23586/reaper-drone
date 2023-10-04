@@ -229,9 +229,11 @@ if __name__ == '__main__':
                 val_df_dict['train_loss'].append(float(loss.detach().cpu().numpy()))
                 val_df_dict['num_samples'].append(score_dict['num_samples'])
 
+                score_tag = '_' + str(score_dict['final_score']) + '-fsc'
+
                 val_df = pd.DataFrame(val_df_dict)
                 val_df.to_csv(log_fname, index=False)
-                fn = 'neuramatch-' + sess_id_ + '.pt'
+                fn = 'neuramatch-' + sess_id_ + score_tag + '.pt'
                 out_fp = model_dir + '/' + fn
                 print('Saving to', out_fp)
                 torch.save(nmatch.state_dict(), out_fp)
@@ -240,9 +242,9 @@ if __name__ == '__main__':
                 fn_prefix = '_'.join(['viz', sess_id])
                 suffix = '-'.join([str(ei) + 'e', str(bi) + 'b', str(masked_outs[0][0].shape[0]) + 'kp'])
                 print('VIZ:', suffix)
-                mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'matches', suffix + '.jpg'])])
-                ha = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-a', suffix + '.png'])])
-                hb = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-b', suffix + '.png'])])
+                mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'matches', suffix + score_tag + '.jpg'])])
+                ha = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-a', suffix + score_tag + '.png'])])
+                hb = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-b', suffix + score_tag + '.png'])])
                 cv2.imwrite(mn, match_viz)
                 cv2.imwrite(ha, heatmap_a)
                 cv2.imwrite(hb, heatmap_b)
