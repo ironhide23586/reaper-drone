@@ -122,12 +122,12 @@ def score_model(nmatch, data_loader, loss_fn):
             val_loss += float(loss.cpu().numpy())
             ni += 1
 
-            val_loss /= ni
+            val_loss_ = val_loss / ni
             prec = float((tps / (tps + fps)).cpu().numpy())
             rec = float((tps / (tps + fns)).cpu().numpy())
             fsc = (2 * prec * rec) / (prec + rec)
 
-            score_dict['val_loss'] = val_loss
+            score_dict['val_loss'] = val_loss_
             score_dict['final_score'] = fsc
             score_dict['precision'] = prec
             score_dict['recall'] = rec
