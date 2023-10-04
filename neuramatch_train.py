@@ -14,7 +14,7 @@ Website: https://www.linkedin.com/in/souham/
 
 LEARN_RATE = 8e-5
 SIDE = 480
-BATCH_SIZE = 10
+BATCH_SIZE = 8
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
@@ -32,6 +32,7 @@ import pytz
 import torch
 import cv2
 import numpy as np
+import pandas as pd
 
 from coolname import generate_slug
 from tqdm import tqdm
@@ -96,6 +97,47 @@ def infer_nn(nmatch, ima, imb):
     return match_viz, heatmap_a, heatmap_b, masked_matches
 
 
+def score_model(nmatch, data_loader, loss_fn):
+    print('Scoring model...')
+    nmatch.eval()
+    score_dict = {'final_score': -1.,
+                  'precision': -1.,
+                  'recall': -1.,
+                  'val_loss': -1.}
+    val_loss = 0.
+    tps = 0
+    fps = 0
+    fns = 0
+    ni = 0
+    with torch.no_grad():
+        for bi, (ims, pxys, heatmaps_gt) in enumerate(tqdm(data_loader)):
+            heatmaps_pred, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
+                            (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
+                ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
+                 (n_match_pxy_, n_conf_pxy_, n_desc_pxy_)), y_out = nmatch(ims, pxys)
+            loss, (tp, fp, fn) = loss_fn(y_out, heatmaps_pred, heatmaps_gt.to(device))
+            tps += tp
+            fps += fp
+            fns += fn
+            val_loss += float(loss.cpu().numpy())
+            ni += 1
+
+            val_loss /= ni
+            prec = float((tps / (tps + fps)).cpu().numpy())
+            rec = float((tps / (tps + fns)).cpu().numpy())
+            fsc = (2 * prec * rec) / (prec + rec)
+
+            score_dict['val_loss'] = val_loss
+            score_dict['final_score'] = fsc
+            score_dict['precision'] = prec
+            score_dict['recall'] = rec
+            score_dict['num_samples'] = int(ni * data_loader.batch_size)
+
+            if bi % 5 == 0:
+                print(json.dumps(score_dict, indent=4, sort_keys=True))
+    return score_dict
+
+
 if __name__ == '__main__':
     ima = Image.open('IMG_3806.HEIC')
     imb = Image.open('IMG_3807.HEIC')
@@ -109,12 +151,17 @@ if __name__ == '__main__':
 
     out_dir = 'scratchspace/trained_models/' + sess_id + '.' + curr_time.strftime("%d-%m-%Y.%H_%M_%S")
     model_dir = out_dir + '/model_files'
+    log_fname = out_dir + '/' + sess_id + '.' + 'log.csv'
     os.makedirs(model_dir, exist_ok=True)
     viz_dir = out_dir + '/viz'
     os.makedirs(viz_dir, exist_ok=True)
 
     ds = ImagePairDataset('scratchspace/gt_data', 'train', blend_coeff=BLEND_COEFF)
     data_loader = DataLoader(ds, BATCH_SIZE, collate_fn=collater, num_workers=cpu_count())
+
+    ds_val = ImagePairDataset('scratchspace/gt_data', 'val', blend_coeff=BLEND_COEFF)
+    data_loader_val = DataLoader(ds_val, BATCH_SIZE, collate_fn=collater, num_workers=cpu_count())
+
     loss_fn = KeypointLoss()
 
     train_config = {'learn_rate': LEARN_RATE,
@@ -145,6 +192,15 @@ if __name__ == '__main__':
     cv2.imwrite(ha, heatmap_a)
     cv2.imwrite(hb, heatmap_b)
 
+    val_df_dict = {'epoch': [],
+                   'epoch_batch_iteration': [],
+                   'final_score': [],
+                   'precision': [],
+                   'recall': [],
+                   'val_loss': [],
+                   'train_loss': [],
+                   'num_samples': []}
+
     for ei in range(NUM_EPOCHS):
         for bi, (ims, pxys, heatmaps_gt) in enumerate(tqdm(data_loader)):
             heatmaps_pred, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
@@ -152,7 +208,7 @@ if __name__ == '__main__':
                 ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
                  (n_match_pxy_, n_conf_pxy_, n_desc_pxy_)), y_out = nmatch(ims, pxys)
             nmatch.zero_grad()
-            loss = loss_fn(y_out, heatmaps_pred, heatmaps_gt.to(device))
+            loss, _ = loss_fn(y_out, heatmaps_pred, heatmaps_gt.to(device))
             loss.backward()
             opt.step()
 
@@ -162,6 +218,19 @@ if __name__ == '__main__':
                 print('Loss:', sess_id_, '-', loss)
 
             if bi % SAVE_EVERY_N_BATCHES == 0:
+                score_dict = score_model(nmatch, data_loader_val, loss_fn)
+
+                val_df_dict['epoch'].append(ei)
+                val_df_dict['epoch_batch_iteration'].append(bi)
+                val_df_dict['final_score'].append(score_dict['final_score'])
+                val_df_dict['precision'].append(score_dict['precision'])
+                val_df_dict['recall'].append(score_dict['recall'])
+                val_df_dict['val_loss'].append(score_dict['val_loss'])
+                val_df_dict['train_loss'].append(float(loss.cpu().numpy()))
+                val_df_dict['num_samples'].append(score_dict['num_samples'])
+
+                val_df = pd.DataFrame(val_df_dict)
+                val_df.to_csv(log_fname, index=False)
                 fn = 'neuramatch-' + sess_id_ + '.pt'
                 out_fp = model_dir + '/' + fn
                 print('Saving to', out_fp)

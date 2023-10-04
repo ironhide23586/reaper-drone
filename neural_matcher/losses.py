@@ -25,10 +25,13 @@ class KeypointLoss(nn.Module):
         tp = torch.sum(y_true * y_pred)
         fp = torch.sum((1. - y_true) * y_pred)
         fn = torch.sum(y_true * (1. - y_pred))
+        # prec = tp / (tp + fp)
+        # rec = tp / (tp + fn)
+        # fsc = (2 * prec * rec) / (prec + rec)
         l = (tp + smooth) / (tp + (alpha * fn) + ((1 - alpha) * fp + smooth))
         tversky_loss = 1. - l
         focal_tversky_loss = torch.float_power(tversky_loss, gamma)
-        return focal_tversky_loss
+        return focal_tversky_loss, (tp, fp, fn)
 
     def forward(self, y_out, hm_pred, hm_gt, smooth=1., alpha=.7, gamma=.75):
         (match_pxy_pos_gt, conf_pxy_pos_gt, desc_pxy_pos_gt), \

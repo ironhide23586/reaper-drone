@@ -20,7 +20,7 @@ import cv2
 
 
 DATASET_DIR = 'scratchspace/datasets'
-OPENAI_API_KEY = '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'
+OPENAI_API_KEY = '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'
 
 HAND_CURATED_DATASET_DIR = DATASET_DIR + os.sep + 'hand_curated'
 

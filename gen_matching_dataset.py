@@ -14,6 +14,7 @@ Website: https://www.linkedin.com/in/souham/
 
 import os
 import pickle
+from glob import glob
 import ssl
 
 import numpy as np
@@ -31,9 +32,9 @@ import openai
 from dataset.retriever import HandCurated
 
 
-MODE = 'train'
+MODE = 'val'
 DATASET_DIR = utils.DOWNLOADED_DATASET_DIR
-TOPIC = 'fpv footage of drone flying over crowds in high speed fpv'
+TOPIC = 'fpv drone indoor flying footage inside different types of buildings ranginge from skyscrapers to homes to offices'
 
 MAX_VIDEO_DURATION_IN_MINUTES = 10
 MAX_SEARCH_VIDEOS = 5
@@ -41,10 +42,21 @@ NUM_GEN_PAIRS = 150
 SEARCH_LISTS_DIR = 'scratchspace/youtube_video_search_lists'
 
 
+def read_txt_file(fp):
+    with open(fp, 'r') as f:
+        links = f.readlines()
+    links = [l.strip() for l in links]
+    return links
+
+
 if __name__ == '__main__':
     openai.api_key = utils.OPENAI_API_KEY
     openai.organization = "org-ZMb8qpLKF19bVrghd1crPe9y"
     os.makedirs(SEARCH_LISTS_DIR, exist_ok=True)
+
+    link_fps = glob(SEARCH_LISTS_DIR + '/*_videos.txt')
+
+    existing_links = list(np.hstack(list(map(read_txt_file, link_fps))))
 
     print('Asking ChatGPT for video title suggestions related to topic:', TOPIC)
     messages = [{"role": "system", "content":
@@ -69,14 +81,18 @@ if __name__ == '__main__':
 
         videos_search = VideosSearch(video_search_phrase, limit=10 * MAX_SEARCH_VIDEOS)
         search_results = videos_search.result()['result']
-        links = [l['link'] for l in search_results if l['title'] not in covered_titles and condn(l)]
-        titles = [l['title'] for l in search_results if l['title'] not in covered_titles and condn(l)]
+        links = [l['link'] for l in search_results if l['link'] not in existing_links and condn(l)]
+        titles = [l['title'] for l in search_results if l['link'] not in existing_links and condn(l)]
+
+        n_dropped = len(search_results) - len(links)
+        if n_dropped > 0:
+            print('Dropped', n_dropped, 'pre-existing videos')
 
         li = np.arange(len(links))
         np.random.shuffle(li)
         links = np.array(links)[li[:MAX_SEARCH_VIDEOS]]
         titles = np.array(titles)[li[:MAX_SEARCH_VIDEOS]]
-        covered_titles += list(titles)
+        existing_links += list(links)
 
         print('Video Titles -')
         print(titles)
