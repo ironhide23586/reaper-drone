@@ -131,7 +131,7 @@ if __name__ == '__main__':
             if bi % 50 == 0:
                 print('Loss:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', loss)
 
-            if bi % SAVE_EVERY_N_BATCHES == 0:
+            if bi % SAVE_EVERY_N_BATCHES == 0 and bi > 0:
                 checkpoint_model(nmatch, loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
                                  log_fname, val_df_dict, SIDE, viz_dir)
             nmatch.train()
