@@ -21,10 +21,19 @@ import utils
 
 class NeuraMatch(nn.Module):
 
-    def __init__(self, device):
+    def __init__(self, device, side, cutoff_n_points):
         super().__init__()
         self.device = device
-        self.cutoff_n_points = 20
+        self.side = side
+        self.cutoff_n_points = cutoff_n_points
+
+        grid_x, grid_y = torch.meshgrid(torch.arange(0, self.side), torch.arange(0, self.side), indexing='xy')
+        grid_x = torch.tile(torch.unsqueeze(torch.unsqueeze(grid_x.to(self.device), 0), 0), (2, 1, 1, 1))
+        grid_y = torch.tile(torch.unsqueeze(torch.unsqueeze(grid_y.to(self.device), 0), 0), (2, 1, 1, 1))
+
+        grid_xy = torch.concat([grid_x, grid_y], dim=1)
+        self.p_xy = torch.moveaxis(grid_xy.reshape(-1, 2, self.side * self.side), 1, -1)
+
         self.heatmap_thresh = nn.Parameter(torch.tensor(.5), requires_grad=False)
         self.final_thresh = nn.Parameter(torch.tensor(.5), requires_grad=False)
 
@@ -134,9 +143,9 @@ class NeuraMatch(nn.Module):
             (p_xy_kp_ab_sel_unmatched, y_conf_sel_unmatched, desc_sel_unmatched), \
             (n_p_xy_kp_ab_sel, n_y_conf_sel, n_desc_sel)
 
-    def extract_points(self, p_xy, bi, f, f_, heatmap_1d):
-        p_xy_local_a = p_xy[0][f[bi]]
-        p_xy_local_b = p_xy[1][f_[bi]]
+    def extract_points(self, bi, f, f_, heatmap_1d):
+        p_xy_local_a = self.p_xy[0][f[bi]]
+        p_xy_local_b = self.p_xy[1][f_[bi]]
 
         hm = heatmap_1d[bi][0][f[bi]]
         hmi_a = torch.argsort(hm)[-self.cutoff_n_points:]
@@ -179,21 +188,13 @@ class NeuraMatch(nn.Module):
         f_a = self.desc_condenser(f_a_raw)
         f_b = self.desc_condenser(f_b_raw)
 
-        s = heatmap.shape[-1]
+        s = self.side
         r = x_a.shape[-1] / s
         nb = x_a.shape[0]
 
         f_a_1d = torch.moveaxis(f_a.reshape(-1, 32, s * s), 1, -1)
         f_b_1d = torch.moveaxis(f_b.reshape(-1, 32, s * s), 1, -1)
         heatmap_1d = heatmap.reshape(-1, 2, s * s)
-
-        grid_x, grid_y = torch.meshgrid(torch.arange(0, s), torch.arange(0, s), indexing='xy')
-
-        grid_x = torch.tile(torch.unsqueeze(torch.unsqueeze(grid_x.to(self.device), 0), 0), (2, 1, 1, 1))
-        grid_y = torch.tile(torch.unsqueeze(torch.unsqueeze(grid_y.to(self.device), 0), 0), (2, 1, 1, 1))
-
-        grid_xy = torch.concat([grid_x, grid_y], dim=1)
-        p_xy = torch.moveaxis(grid_xy.reshape(-1, 2, s * s), 1, -1)
 
         f = heatmap[:, 0] > self.heatmap_thresh
         f = f.reshape(-1, s * s)
@@ -248,7 +249,7 @@ class NeuraMatch(nn.Module):
                 desc_pxy_pos_gt.append(desc_sel_gt)
                 match_pxy_gt_hashes.append(self.hash_match(gt_xy_pairs[bi]))
 
-            p_a, p_b = self.extract_points(p_xy, bi, f, f_, heatmap_1d)
+            p_a, p_b = self.extract_points(bi, f, f_, heatmap_1d)
             matches, unmatches, nomatches = self.get_matches(p_a, p_b, s, f_a_1d[bi], f_b_1d[bi], heatmap_1d[bi])
 
             (p_xy_kp_ab_sel_matched, y_conf_sel_matched, desc_sel_matched), \
@@ -265,7 +266,7 @@ class NeuraMatch(nn.Module):
             n_conf_pxy.append(n_y_conf_sel)
             n_desc_pxy.append(n_desc_sel)
 
-            p_a_, p_b_ = self.extract_points(p_xy, bi, f_n, f_n_, heatmap_1d)
+            p_a_, p_b_ = self.extract_points(bi, f_n, f_n_, heatmap_1d)
             matches_, unmatches_, nomatches_ = self.get_matches(p_a_, p_b_, s, f_a_1d[bi], f_b_1d[bi], heatmap_1d[bi])
 
             (p_xy_kp_ab_sel_matched_, y_conf_sel_matched_, desc_sel_matched_), \
@@ -305,8 +306,7 @@ class NeuraMatch(nn.Module):
             y_out = ((match_pxy_pos_gt, conf_pxy_pos_gt, desc_pxy_pos_gt),
                      (match_pxy_neg_gt_, conf_pxy_neg_gt_, desc_pxy_neg_gt_),
                      (un_match_pxy_neg_gt, un_conf_pxy_neg_gt, un_desc_pxy_neg_gt))
-        # hm = transforms.Resize(x_a.shape[-1], interpolation=transforms.InterpolationMode.BILINEAR,
-        #                        antialias=True)(heatmap)
+
         return heatmap, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
                          (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
             ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),

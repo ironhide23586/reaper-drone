@@ -12,8 +12,8 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = 'scratchspace/trained_models/little-mamba.04-10-2023.08_39_11/model_files/neuramatch-little-mamba_50e-600b_0.43906313267958846-fsc.pt'
-
+RESUME_MODEL_FPATH = 'scratchspace/trained_models/axiomatic-beagle.04-10-2023.20_56_24/model_files/neuramatch-axiomatic-beagle_15e-974b_0.2113512917225343-fsc.pt'
+TRAIN_MODULE = 'matcher'  # 'heatmap' or 'matcher'
 LEARN_RATE = 8e-5
 SIDE = 480
 BATCH_SIZE = 8
@@ -26,6 +26,7 @@ BLEND_COEFF = .55
 TVERSKY_SMOOTH = 1.
 TVERSKY_ALPHA = .7
 TVERSKY_GAMMA = .75
+CUTOFF_N_POINTS = 20
 
 
 from datetime import datetime
@@ -52,7 +53,7 @@ if __name__ == '__main__':
 
     tz = pytz.timezone('Asia/Kolkata')
     curr_time = datetime.now(tz)
-    sess_id = generate_slug(2)
+    sess_id = generate_slug(2) + '-' + TRAIN_MODULE
     print(sess_id)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print('Using device', device)
@@ -72,7 +73,8 @@ if __name__ == '__main__':
                               blend_coeff=BLEND_COEFF)
     data_loader_val = DataLoader(ds_val, BATCH_SIZE, collate_fn=collater, num_workers=cpu_count())
 
-    loss_fn = KeypointLoss(smooth=TVERSKY_SMOOTH, alpha=TVERSKY_ALPHA, gamma=TVERSKY_GAMMA)
+    loss_fn = KeypointLoss(smooth=TVERSKY_SMOOTH, alpha=TVERSKY_ALPHA, gamma=TVERSKY_GAMMA,
+                           train_module=TRAIN_MODULE)
 
     train_config = {'start_learn_rate': LEARN_RATE,
                     'side': SIDE,
@@ -83,6 +85,8 @@ if __name__ == '__main__':
                     'tversky_smooth': TVERSKY_SMOOTH,
                     'tversky_alpha': TVERSKY_ALPHA,
                     'tversky_gamma': TVERSKY_GAMMA,
+                    'cutoff_n_points': CUTOFF_N_POINTS,
+                    'train_module': TRAIN_MODULE,
                     'session_id': sess_id}
     if RESUME_MODEL_FPATH is not None:
         train_config['resume_model_fpath'] = RESUME_MODEL_FPATH
@@ -90,7 +94,7 @@ if __name__ == '__main__':
     with open(config_fpath, 'w') as f:
         json.dump(train_config, f, indent=4, sort_keys=True)
 
-    nmatch = NeuraMatch(device)
+    nmatch = NeuraMatch(device, SIDE, CUTOFF_N_POINTS)
     nmatch.to(device)
 
     if RESUME_MODEL_FPATH is not None:
@@ -113,8 +117,8 @@ if __name__ == '__main__':
                    'train_loss': [],
                    'num_samples': []}
 
-    checkpoint_model(nmatch, None, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
-                     val_df_dict, SIDE, viz_dir)
+    # checkpoint_model(nmatch, None, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
+    #                  val_df_dict, SIDE, viz_dir)
 
     for ei in range(NUM_EPOCHS):
         nmatch.train()
@@ -126,6 +130,13 @@ if __name__ == '__main__':
             nmatch.zero_grad()
             loss, _ = loss_fn(y_out, heatmaps_pred, heatmaps_gt.to(device))
             loss.backward()
+
+            if TRAIN_MODULE == 'matcher':
+                nmatch.conv0_block_a.zero_grad()
+                nmatch.conv0_block_b.zero_grad()
+                nmatch.conv0_block_ab.zero_grad()
+                nmatch.heatmap_condenser.zero_grad()
+
             opt.step()
 
             if bi % 50 == 0:
