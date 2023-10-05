@@ -165,7 +165,7 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
     writer.add_scalar('val_loss', score_dict['val_loss'], g_idx)
 
     if train_loss is not None:
-        val_df_dict['train_loss'].append(float(train_loss.detach().cpu().numpy()))
+        val_df_dict['train_loss'].append(train_loss)
     else:
         val_df_dict['train_loss'].append(-1.)
     val_df_dict['num_samples'].append(score_dict['num_samples'])
