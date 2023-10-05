@@ -12,7 +12,7 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = 'scratchspace/trained_models/axiomatic-beagle.04-10-2023.20_56_24/model_files/neuramatch-axiomatic-beagle_15e-974b_0.2113512917225343-fsc.pt'
+RESUME_MODEL_FPATH = 'scratchspace/trained_models/ambrosial-skink-matcher.05-10-2023.17_37_47/model_files/neuramatch-ambrosial-skink-matcher_4e-974b_0.4935259740624083-fsc.pt'
 TRAIN_MODULE = 'matcher'  # 'heatmap' or 'matcher'
 LEARN_RATE = 8e-5
 SIDE = 480
@@ -40,6 +40,7 @@ import pytz
 from tqdm import tqdm
 from coolname import generate_slug
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 from neural_matcher.nn import NeuraMatch
 from dataset.streamer import ImagePairDataset
@@ -58,16 +59,20 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print('Using device', device)
 
-    out_dir = 'scratchspace/trained_models/' + sess_id + '.' + curr_time.strftime("%d-%m-%Y.%H_%M_%S")
+    root_dir = 'scratchspace/trained_models'
+    out_dir = root_dir + '/' + sess_id + '.' + curr_time.strftime("%d-%m-%Y.%H_%M_%S")
     model_dir = out_dir + '/model_files'
     log_fname = out_dir + '/' + sess_id + '.' + 'log.csv'
+    tensorboard_log_dir = root_dir + '/tensorboard_logs'
     os.makedirs(model_dir, exist_ok=True)
     viz_dir = out_dir + '/viz'
     os.makedirs(viz_dir, exist_ok=True)
 
-    ds = ImagePairDataset('scratchspace/gt_data', 'train', ksize=KSIZE, radius_scale=RADIUS_SCALE,
-                          blend_coeff=BLEND_COEFF)
-    data_loader = DataLoader(ds, BATCH_SIZE, collate_fn=collater, num_workers=cpu_count())
+    writer = SummaryWriter(tensorboard_log_dir, filename_suffix='.' + sess_id + '.tb')
+
+    ds_train = ImagePairDataset('scratchspace/gt_data', 'train', ksize=KSIZE, radius_scale=RADIUS_SCALE,
+                                blend_coeff=BLEND_COEFF)
+    data_loader_train = DataLoader(ds_train, BATCH_SIZE, collate_fn=collater, num_workers=cpu_count())
 
     ds_val = ImagePairDataset('scratchspace/gt_data', 'val', ksize=KSIZE, radius_scale=RADIUS_SCALE,
                               blend_coeff=BLEND_COEFF)
@@ -118,11 +123,12 @@ if __name__ == '__main__':
                    'num_samples': []}
 
     checkpoint_model(nmatch, None, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
-                     val_df_dict, SIDE, viz_dir)
-
+                     val_df_dict, SIDE, viz_dir, writer, 0)
+    running_loss = 0.
+    prev_running_loss = running_loss
     for ei in range(NUM_EPOCHS):
         nmatch.train()
-        for bi, (ims, pxys, heatmaps_gt) in enumerate(tqdm(data_loader)):
+        for bi, (ims, pxys, heatmaps_gt) in enumerate(tqdm(data_loader_train)):
             heatmaps_pred, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
                       (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
                 ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
@@ -130,6 +136,7 @@ if __name__ == '__main__':
             nmatch.zero_grad()
             loss, _ = loss_fn(y_out, heatmaps_pred, heatmaps_gt.to(device))
             loss.backward()
+            running_loss += loss.item()
 
             if TRAIN_MODULE == 'matcher':
                 nmatch.conv0_block_a.zero_grad()
@@ -140,11 +147,17 @@ if __name__ == '__main__':
             opt.step()
 
             if bi % 50 == 0:
-                print('Loss:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', loss)
+                running_loss /= 50
+                prev_running_loss = running_loss
+                print('Loss:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', running_loss)
+                writer.add_scalar('train_loss', running_loss, ei * len(data_loader_train) + bi)
+                running_loss = 0.
 
             if bi % SAVE_EVERY_N_BATCHES == 0 and bi > 0:
-                checkpoint_model(nmatch, loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
-                                 log_fname, val_df_dict, SIDE, viz_dir)
+                checkpoint_model(nmatch, prev_running_loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei,
+                                 bi, sess_id, log_fname, val_df_dict, SIDE, viz_dir, writer,
+                                 ei * len(data_loader_train) + bi)
             nmatch.train()
-        checkpoint_model(nmatch, loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
-                         log_fname, val_df_dict, SIDE, viz_dir)
+        checkpoint_model(nmatch, prev_running_loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei,
+                         bi, sess_id, log_fname, val_df_dict, SIDE, viz_dir, writer,
+                         ei * len(data_loader_train) + bi)

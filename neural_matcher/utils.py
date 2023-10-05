@@ -1,3 +1,17 @@
+"""  _
+    |_|_
+   _  | |
+ _|_|_|_|_
+|_|_|_|_|_|_
+  |_|_|_|_|_|
+    | | |_|
+    |_|_
+      |_|
+
+Author: Souham Biswas
+Website: https://www.linkedin.com/in/souham/
+"""
+
 import os
 import json
 
@@ -5,22 +19,36 @@ import torch
 import cv2
 import numpy as np
 import pandas as pd
-
+import matplotlib.pyplot as plt
 from torchvision import transforms
-
 from tqdm import tqdm
+
 import utils
 
 tensor_transform = transforms.ToTensor()
 input_transforms = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
 
-def viz_matches(masked_matches, a, b, heatmap):
+def viz_heatmap(heatmap):
+    hm = np.tile(np.expand_dims(heatmap, -1), [1, 1, 3])
+    lc = np.tile([[[0, 0, 255]]], [hm.shape[0], hm.shape[1], 1])
+    hc = np.tile([[[255, 140, 0]]], [hm.shape[0], hm.shape[1], 1])
+    hm_ = (hc * hm) + (lc * (1. - hm))
+    return (hm_ * 255).astype(np.uint8)
+
+
+def viz_matches(masked_matches, a, b, heatmap, blend_coeff=.65):
     pxy_matches, conf_matches, desc_matches = masked_matches
-    img = utils.drawMatches(a, pxy_matches[0][:, :2].detach().cpu().numpy(),
-                            b, pxy_matches[0][:, 2:].detach().cpu().numpy())
-    hm_a = (heatmap[0][0].detach().cpu().numpy() * 255).astype(np.uint8)
-    hm_b = (heatmap[0][1].detach().cpu().numpy() * 255).astype(np.uint8)
+
+    hm_a = viz_heatmap(heatmap[0][0].detach().cpu().numpy())
+    hm_b = viz_heatmap(heatmap[0][1].detach().cpu().numpy())
+
+    blended_viz_a = blend_coeff * hm_a + (1. - blend_coeff) * a
+    blended_viz_b = blend_coeff * hm_b + (1. - blend_coeff) * b
+
+    img = utils.drawMatches(blended_viz_a, pxy_matches[0][:, :2].detach().cpu().numpy(),
+                            blended_viz_b, pxy_matches[0][:, 2:].detach().cpu().numpy())
+
     return img, hm_a, hm_b
 
 
@@ -102,11 +130,27 @@ def score_model(nmatch, data_loader, loss_fn, device):
     return score_dict
 
 
+def matplotlib_imshow(img):
+    fig = plt.figure()
+    plt.imshow(img)
+    return fig
+
+
 def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
-                     log_fname, val_df_dict, side, viz_dir):
+                     log_fname, val_df_dict, side, viz_dir, writer, g_idx):
     nmatch.eval()
     suffix = '-'.join([str(ei) + 'e', str(bi) + 'b'])
     sess_id_ = sess_id + '_' + suffix
+
+    match_viz, heatmap_a, heatmap_b, masked_outs = infer_nn(nmatch, ima, imb, side, device)
+    fn_prefix = '_'.join(['viz', sess_id])
+    suffix = '-'.join([str(ei) + 'e', str(bi) + 'b', str(masked_outs[0][0].shape[0]) + 'kp'])
+    print('VIZ:', suffix)
+    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'matches', suffix + '.jpg'])])
+    cv2.imwrite(mn, match_viz)
+
+    writer.add_figure('demo_inference', matplotlib_imshow(match_viz), global_step=g_idx)
+
     score_dict = score_model(nmatch, data_loader_val, loss_fn, device)
     val_df_dict['epoch'].append(ei)
     val_df_dict['epoch_batch_iteration'].append(bi)
@@ -114,6 +158,12 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
     val_df_dict['precision'].append(score_dict['precision'])
     val_df_dict['recall'].append(score_dict['recall'])
     val_df_dict['val_loss'].append(score_dict['val_loss'])
+
+    writer.add_scalar('final_score', score_dict['final_score'], g_idx)
+    writer.add_scalar('precision', score_dict['precision'], g_idx)
+    writer.add_scalar('recall', score_dict['recall'], g_idx)
+    writer.add_scalar('val_loss', score_dict['val_loss'], g_idx)
+
     if train_loss is not None:
         val_df_dict['train_loss'].append(float(train_loss.detach().cpu().numpy()))
     else:
@@ -129,14 +179,4 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
     print('Saving to', out_fp)
     torch.save(nmatch.state_dict(), out_fp)
 
-    match_viz, heatmap_a, heatmap_b, masked_outs = infer_nn(nmatch, ima, imb, side, device)
-    fn_prefix = '_'.join(['viz', sess_id])
-    suffix = '-'.join([str(ei) + 'e', str(bi) + 'b', str(masked_outs[0][0].shape[0]) + 'kp'])
-    print('VIZ:', suffix)
-    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'matches', suffix + score_tag + '.jpg'])])
-    ha = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-a', suffix + score_tag + '.png'])])
-    hb = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-b', suffix + score_tag + '.png'])])
-    cv2.imwrite(mn, match_viz)
-    cv2.imwrite(ha, heatmap_a)
-    cv2.imwrite(hb, heatmap_b)
     nmatch.train()

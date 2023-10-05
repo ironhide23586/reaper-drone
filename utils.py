@@ -82,6 +82,7 @@ def rotate_image(image, angle, remove_black_patches=True):
     result = cv2.resize(im_cropped, (w, h))
   return result
 
+
 def drawMatches(img1, kp1, img2, kp2):
   rows1 = img1.shape[0]
   cols1 = img1.shape[1]
@@ -90,12 +91,14 @@ def drawMatches(img1, kp1, img2, kp2):
   out = np.zeros((max([rows1, rows2]), cols1 + cols2, 3), dtype='uint8')
   out[:rows1, :cols1] = img1
   out[:rows2, cols1:cols1 + cols2] = img2
+  colors = (np.random.uniform(size=(kp1.shape[0], 3)) * 255).astype(np.uint8)
   for mi in range(kp1.shape[0]):
     (x1, y1) = kp1[mi]
     (x2, y2) = kp2[mi]
-    cv2.circle(out, (int(x1), int(y1)), 4, (255, 0, 0), 1)
-    cv2.circle(out, (int(x2) + cols1, int(y2)), 4, (255, 0, 0), 1)
-    cv2.line(out, (int(x1), int(y1)), (int(x2) + cols1, int(y2)), (255, 0, 0), 1)
+    # cv2.circle(out, (int(x1), int(y1)), 4, colors[mi], 1)
+    # cv2.circle(out, (int(x2) + cols1, int(y2)), 4, colors[mi], 1)
+    cv2.line(out, (int(x1), int(y1)), (int(x2) + cols1, int(y2)), (int(colors[mi][0]),
+                                                                   int(colors[mi][1]), int(colors[mi][2])), 1)
   return out
 
 
