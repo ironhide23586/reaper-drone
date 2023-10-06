@@ -37,8 +37,8 @@ def viz_heatmap(heatmap):
     return (hm_ * 255).astype(np.uint8)
 
 
-def viz_matches(masked_matches, a, b, heatmap, blend_coeff=.65):
-    pxy_matches, conf_matches, desc_matches = masked_matches
+def viz_matches(pxy_matches, a, b, heatmap, blend_coeff=.65):
+    # pxy_matches, conf_matches, desc_matches = masked_matches
 
     hm_a = viz_heatmap(heatmap[0][0].detach().cpu().numpy())
     hm_b = viz_heatmap(heatmap[0][1].detach().cpu().numpy())
@@ -46,8 +46,8 @@ def viz_matches(masked_matches, a, b, heatmap, blend_coeff=.65):
     blended_viz_a = blend_coeff * hm_a + (1. - blend_coeff) * a
     blended_viz_b = blend_coeff * hm_b + (1. - blend_coeff) * b
 
-    img = utils.drawMatches(blended_viz_a, pxy_matches[0][:, :2].detach().cpu().numpy(),
-                            blended_viz_b, pxy_matches[0][:, 2:].detach().cpu().numpy())
+    img = utils.drawMatches(blended_viz_a, pxy_matches[:, :2].detach().cpu().numpy(),
+                            blended_viz_b, pxy_matches[:, 2:].detach().cpu().numpy())
 
     return img, hm_a, hm_b
 
@@ -83,11 +83,11 @@ def infer_nn(nmatch, ima, imb, side, device):
     t = torch.unsqueeze(torch.stack([input_transforms(im_a), input_transforms(im_b)]), 0)
     nmatch.eval()
     with torch.no_grad():
-        heatmap, masked_outs, _, _ = nmatch(t)
-    masked_matches, masked_unmatches, n_masked_matches = masked_outs
-    match_viz, heatmap_a, heatmap_b = viz_matches(masked_matches, ima_pp, imb_pp, heatmap)
+        heatmap, _, (conf_match, match_xy_pairs, confs) = nmatch(t)
+
+    match_viz, heatmap_a, heatmap_b = viz_matches(match_xy_pairs, ima_pp, imb_pp, heatmap)
     nmatch.train()
-    return match_viz, heatmap_a, heatmap_b, masked_matches
+    return match_viz, heatmap_a, heatmap_b, match_xy_pairs
 
 
 def score_model(nmatch, data_loader, loss_fn, device):
@@ -103,10 +103,7 @@ def score_model(nmatch, data_loader, loss_fn, device):
     ni = 0
     with torch.no_grad():
         for bi, (ims, pxys, heatmaps_gt) in enumerate(tqdm(data_loader)):
-            heatmaps_pred, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
-                            (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
-                ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
-                 (n_match_pxy_, n_conf_pxy_, n_desc_pxy_)), y_out = nmatch(ims, pxys)
+            heatmaps_pred, y_out = nmatch(ims, pxys)
             loss, (tp, fp, fn) = loss_fn(y_out, heatmaps_pred, heatmaps_gt.to(device))
             tps += tp
             fps += fp
@@ -142,9 +139,9 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
     suffix = '-'.join([str(ei) + 'e', str(bi) + 'b'])
     sess_id_ = sess_id + '_' + suffix
 
-    match_viz, heatmap_a, heatmap_b, masked_outs = infer_nn(nmatch, ima, imb, side, device)
+    match_viz, heatmap_a, heatmap_b, matches_xy = infer_nn(nmatch, ima, imb, side, device)
     fn_prefix = '_'.join(['viz', sess_id])
-    suffix = '-'.join([str(ei) + 'e', str(bi) + 'b', str(masked_outs[0][0].shape[0]) + 'kp'])
+    suffix = '-'.join([str(ei) + 'e', str(bi) + 'b', str(matches_xy.shape[0]) + 'kp'])
     print('VIZ:', suffix)
     mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'matches', suffix + '.jpg'])])
     cv2.imwrite(mn, match_viz)

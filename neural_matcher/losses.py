@@ -54,21 +54,19 @@ class KeypointLoss(nn.Module):
         return loss_matcher, (tp, fp, fn)
 
     def forward(self, y_out, hm_pred, hm_gt):
-        (match_pxy_pos_gt, conf_pxy_pos_gt, desc_pxy_pos_gt), \
-            (match_pxy_neg_gt_, conf_pxy_neg_gt_, desc_pxy_neg_gt_), \
-            (un_match_pxy_neg_gt, un_conf_pxy_neg_gt, un_desc_pxy_neg_gt) = y_out
+        match_vectors_pred, match_vectors_gt = y_out
 
         if self.train_module == 'heatmap':
             loss_heatmap, (tp, fp, fn) = self.loss_compute(hm_pred, hm_gt, self.smooth, self.alpha, self.gamma)
             loss = loss_heatmap
         elif self.train_module == 'matcher':
-            loss_matcher, (tp, fp, fn) = self.matcher_loss_compute(conf_pxy_pos_gt, conf_pxy_neg_gt_,
-                                                                   un_conf_pxy_neg_gt)
+            loss_matcher, (tp, fp, fn) = self.loss_compute(match_vectors_pred, match_vectors_gt, self.smooth,
+                                                           self.alpha, self.gamma)
             loss = loss_matcher
         else:
             loss_heatmap, (tp_, fp_, fn_) = self.loss_compute(hm_pred, hm_gt, self.smooth, self.alpha, self.gamma)
-            loss_matcher, (tp__, fp__, fn__) = self.matcher_loss_compute(conf_pxy_pos_gt, conf_pxy_neg_gt_,
-                                                                         un_conf_pxy_neg_gt)
+            loss_matcher, (tp__, fp__, fn__) = self.loss_compute(match_vectors_pred, match_vectors_gt, self.smooth,
+                                                                 self.alpha, self.gamma)
             loss = loss_heatmap + loss_matcher
             tp = tp_ + tp__
             fp = fp_ + fp__

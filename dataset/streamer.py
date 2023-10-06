@@ -57,13 +57,19 @@ class ImagePairDataset(Dataset):
         # import cv2
         # cv2.imwrite('k.png', k * 255)
         # cv2.imwrite('k_.png', k_ * 255)
+        #
+        # cv2.imwrite('ki.png', np.rollaxis(im_ab[0], 0, 3))
+        # cv2.imwrite('ki_.png', np.rollaxis(im_ab[1], 0, 3))
+        #
         # im_ab_viz = utils.drawMatches(np.rollaxis(im_ab[0], 0, 3), matches_xy[:, :2],
         #                               np.rollaxis(im_ab[1], 0, 3), matches_xy[:, 2:])
         # cv2.imwrite('k__.png', im_ab_viz)
+        #
         # b = np.rollaxis(im_ab[0], 0, 3) * .3 + np.tile(np.expand_dims(k * 255, -1), [1, 1, 3]) * .7
         # cv2.imwrite('k___.png', b)
-        # b = np.rollaxis(im_ab[1], 0, 3) * .3 + np.tile(np.expand_dims(k_ * 255, -1), [1, 1, 3]) * .7
-        # cv2.imwrite('k____.png', b)
+        #
+        # b_ = np.rollaxis(im_ab[1], 0, 3) * .3 + np.tile(np.expand_dims(k_ * 255, -1), [1, 1, 3]) * .7
+        # cv2.imwrite('k____.png', b_)
 
         return im_ab, matches_xy, heatmaps
 

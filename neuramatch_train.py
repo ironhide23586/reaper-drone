@@ -16,7 +16,7 @@ RESUME_MODEL_FPATH = 'scratchspace/trained_models/ambrosial-skink-matcher.05-10-
 TRAIN_MODULE = 'matcher'  # 'heatmap' or 'matcher'
 LEARN_RATE = 2e-4
 SIDE = 480
-BATCH_SIZE = 8
+BATCH_SIZE = 2
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     if RESUME_MODEL_FPATH is not None:
         print('Resuming from', RESUME_MODEL_FPATH)
-        nmatch.load_state_dict(torch.load(RESUME_MODEL_FPATH, map_location=device), strict=True)
+        nmatch.load_state_dict(torch.load(RESUME_MODEL_FPATH, map_location=device), strict=False)
         print('Loaded!')
     else:
         print('Training from scratch...')
@@ -129,10 +129,7 @@ if __name__ == '__main__':
     for ei in range(NUM_EPOCHS):
         nmatch.train()
         for bi, (ims, pxys, heatmaps_gt) in enumerate(tqdm(data_loader_train)):
-            heatmaps_pred, ((match_pxy, conf_pxy, desc_pxy), (un_match_pxy, un_conf_pxy, un_desc_pxy),
-                      (n_match_pxy, n_conf_pxy, n_desc_pxy)), \
-                ((match_pxy_, conf_pxy_, desc_pxy_), (un_match_pxy_, un_conf_pxy_, un_desc_pxy_),
-                 (n_match_pxy_, n_conf_pxy_, n_desc_pxy_)), y_out = nmatch(ims, pxys)
+            heatmaps_pred, y_out, _ = nmatch(ims, pxys)
             nmatch.zero_grad()
             loss, _ = loss_fn(y_out, heatmaps_pred, heatmaps_gt.to(device))
             loss.backward()
