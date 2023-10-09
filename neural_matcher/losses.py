@@ -53,9 +53,7 @@ class KeypointLoss(nn.Module):
         loss_matcher, (tp, fp, fn) = self.loss_compute(y_true, y_pred, self.smooth, self.alpha, self.gamma)
         return loss_matcher, (tp, fp, fn)
 
-    def forward(self, y_out, hm_pred, hm_gt):
-        match_vectors_pred, match_vectors_gt = y_out
-
+    def forward(self, match_vectors_pred, match_vectors_gt, hm_pred, hm_gt):
         if self.train_module == 'heatmap':
             loss_heatmap, (tp, fp, fn) = self.loss_compute(hm_pred, hm_gt, self.smooth, self.alpha, self.gamma)
             loss = loss_heatmap

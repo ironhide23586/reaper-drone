@@ -15,7 +15,6 @@ Website: https://www.linkedin.com/in/souham/
 RESUME_MODEL_FPATH = 'scratchspace/trained_models/ambrosial-skink-matcher.05-10-2023.17_37_47/model_files/neuramatch-ambrosial-skink-matcher_4e-974b_0.4935259740624083-fsc.pt'
 TRAIN_MODULE = 'matcher'  # 'heatmap' or 'matcher'
 LEARN_RATE = 2e-4
-SIDE = 480
 BATCH_SIZE = 2
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
@@ -26,7 +25,6 @@ BLEND_COEFF = .55
 TVERSKY_SMOOTH = 1.
 TVERSKY_ALPHA = .7
 TVERSKY_GAMMA = .75
-CUTOFF_N_POINTS = 20
 
 
 from datetime import datetime
@@ -41,6 +39,7 @@ from tqdm import tqdm
 from coolname import generate_slug
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+import cv2
 
 from neural_matcher.nn import NeuraMatch
 from dataset.streamer import ImagePairDataset
@@ -82,7 +81,7 @@ if __name__ == '__main__':
                            train_module=TRAIN_MODULE)
 
     train_config = {'start_learn_rate': LEARN_RATE,
-                    'side': SIDE,
+                    'side': utils.SIDE,
                     'batch_size': BATCH_SIZE,
                     'blend_coeff': BLEND_COEFF,
                     'ksize': KSIZE,
@@ -90,7 +89,6 @@ if __name__ == '__main__':
                     'tversky_smooth': TVERSKY_SMOOTH,
                     'tversky_alpha': TVERSKY_ALPHA,
                     'tversky_gamma': TVERSKY_GAMMA,
-                    'cutoff_n_points': CUTOFF_N_POINTS,
                     'train_module': TRAIN_MODULE,
                     'session_id': sess_id}
     if RESUME_MODEL_FPATH is not None:
@@ -99,7 +97,7 @@ if __name__ == '__main__':
     with open(config_fpath, 'w') as f:
         json.dump(train_config, f, indent=4, sort_keys=True)
 
-    nmatch = NeuraMatch(device, SIDE, CUTOFF_N_POINTS)
+    nmatch = NeuraMatch(device, utils.SIDE)
     nmatch.to(device)
 
     if RESUME_MODEL_FPATH is not None:
@@ -123,15 +121,15 @@ if __name__ == '__main__':
                    'num_samples': []}
 
     checkpoint_model(nmatch, None, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
-                     val_df_dict, SIDE, viz_dir, writer, 0)
+                     val_df_dict, viz_dir, writer, 0, KSIZE, RADIUS_SCALE, BLEND_COEFF)
     running_loss = 0.
     prev_running_loss = running_loss
     for ei in range(NUM_EPOCHS):
         nmatch.train()
-        for bi, (ims, pxys, heatmaps_gt) in enumerate(tqdm(data_loader_train)):
-            heatmaps_pred, y_out, _ = nmatch(ims, pxys)
+        for bi, (ims, pxys, heatmaps_gt, match_vectors_gt) in enumerate(tqdm(data_loader_train)):
+            (heatmaps_pred, match_vectors_pred, conf_mask), (match_xy_pairs, confs) = nmatch(ims, pxys)
             nmatch.zero_grad()
-            loss, _ = loss_fn(y_out, heatmaps_pred, heatmaps_gt.to(device))
+            loss, _ = loss_fn(match_vectors_pred, match_vectors_gt, heatmaps_pred, heatmaps_gt.to(device))
             loss.backward()
             running_loss += loss.item()
 
@@ -152,9 +150,9 @@ if __name__ == '__main__':
 
             if bi % SAVE_EVERY_N_BATCHES == 0 and bi > 0:
                 checkpoint_model(nmatch, prev_running_loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei,
-                                 bi, sess_id, log_fname, val_df_dict, SIDE, viz_dir, writer,
+                                 bi, sess_id, log_fname, val_df_dict, viz_dir, writer,
                                  ei * len(data_loader_train) + bi)
             nmatch.train()
         checkpoint_model(nmatch, prev_running_loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei,
-                         bi, sess_id, log_fname, val_df_dict, SIDE, viz_dir, writer,
+                         bi, sess_id, log_fname, val_df_dict, viz_dir, writer,
                          ei * len(data_loader_train) + bi)

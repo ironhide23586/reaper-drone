@@ -13,19 +13,15 @@ Website: https://www.linkedin.com/in/souham/
 """
 
 import torch
-import torchvision.transforms as transforms
 from torch import nn
-
-import utils
 
 
 class NeuraMatch(nn.Module):
 
-    def __init__(self, device, side, cutoff_n_points):
+    def __init__(self, device, side):
         super().__init__()
         self.device = device
         self.side = side
-        self.cutoff_n_points = cutoff_n_points
 
         grid_x, grid_y = torch.meshgrid(torch.arange(0, self.side), torch.arange(0, self.side), indexing='xy')
         grid_x = torch.tile(torch.unsqueeze(torch.unsqueeze(grid_x.to(self.device), 0), 0), (2, 1, 1, 1))
@@ -116,32 +112,20 @@ class NeuraMatch(nn.Module):
 
         p_xy_tiled = torch.tile(torch.unsqueeze(self.p_xy[0], 0), (nb, 1, 1))
 
-        targ_xy = torch.clamp(p_xy_tiled + mv, 0, s - 1)
-        targ_xy_1d = targ_xy[:, 0, :] + targ_xy[:, 1, :] * s
+        targ_xy_2d = torch.clamp(p_xy_tiled + mv, 0, s - 1)
+        targ_xy_1d = targ_xy_2d[:, 0, :] + targ_xy_2d[:, 1, :] * s
         hm_targ = heatmap.reshape(-1, 2, s * s)[:, 1]
         conf_targ = torch.stack([hm_targ[i][targ_xy_1d[i]].reshape(s, s) for i in range(nb)])
 
-        conf_match = (heatmap[:, 0] + conf_targ) / 2.
+        conf_mask = (heatmap[:, 0] + conf_targ) / 2.
 
-        src_xys = []
-        targ_xys = []
+        match_xy_pairs = []
         confs = []
 
-        cm = conf_match.reshape(-1, s * s)
+        cm = conf_mask.reshape(-1, s * s)
         for bi in torch.arange(nb).to(self.device):
             f = cm[bi] > self.heatmap_thresh
             confs.append(cm[bi, f])
-            src_xys.append(self.p_xy[0, :, f])
-            targ_xys.append(targ_xy[bi, :, f])
-        src_xys = torch.vstack(src_xys)
-        targ_xys = torch.vstack(targ_xys)
-        match_xy_pairs = torch.vstack([src_xys, targ_xys]).T
+            match_xy_pairs.append(torch.vstack([self.p_xy[0, :, f], targ_xy_2d[bi, :, f]]).T)
 
-        match_vectors_gt = torch.zeros_like(match_vectors_pred)
-        if gt_xy_pairs_ is not None:
-            for bi in torch.arange(nb).to(self.device):
-                p = gt_xy_pairs[bi]
-                v = (p[:, 2:] - p[:, :2]) / s
-                match_vectors_gt[bi, :, p[:, 1], p[:, 0]] = v.T
-
-        return heatmap, (match_vectors_pred, match_vectors_gt), (conf_match, match_xy_pairs, confs)
+        return (heatmap, match_vectors_pred, conf_mask), (match_xy_pairs, confs)
