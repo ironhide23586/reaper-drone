@@ -18,7 +18,7 @@ import os
 import numpy as np
 import cv2
 
-
+SIDE = 480
 DATASET_DIR = 'scratchspace/datasets'
 OPENAI_API_KEY = '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'
 
