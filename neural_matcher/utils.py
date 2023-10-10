@@ -68,7 +68,7 @@ def viz_matches(a, b, out_masks, out_matches, blend_coeff=.65):
 def pxys_to_match_vectors_mask(pxys):
     match_vectors_mask = torch.zeros([len(pxys), 2, utils.SIDE, utils.SIDE])
     for bi in range(len(pxys)):
-        v = (pxys[bi][:, 2:] - pxys[bi][:, :2]) / utils.SIDE
+        v = (pxys[bi][:, 2:] - pxys[bi][:, :2]) / (utils.SIDE - 1)
         match_vectors_mask[bi, :, pxys[bi][:, 1], pxys[bi][:, 0]] = torch.Tensor(v.T)
     return match_vectors_mask
 
@@ -208,7 +208,7 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
         sm = SIFTMatcher()
         s = heatmap_a.shape[0]
         matches_xy_gt, _ = sm.sift_match(ima_pp, imb_pp)
-        matches_xy_gt.astype(int)
+        matches_xy_gt = np.round(np.clip(matches_xy_gt, 0, s - 1)).astype(int)
         hma = utils.create_heatmap(matches_xy_gt[:, :2], s, ksize=ksize,  radius_scale=radius_scale,
                                    blend_coeff=blend_coeff)
         hmb = utils.create_heatmap(matches_xy_gt[:, 2:], s, ksize=ksize, radius_scale=radius_scale,
@@ -223,8 +223,8 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
         match_vectors_gt = pxys_to_match_vectors_mask([matches_xy_gt])
         match_vectors_gt_viz = viz_match_vectors(match_vectors_gt[0])
 
-        targ_xy_2d = np.clip(nmatch.p_xy[0].detach().cpu().numpy()
-                             + (match_vectors_gt[0].reshape(2, -1) * s).detach().cpu().numpy(),
+        targ_xy_2d = np.clip(np.round(nmatch.p_xy[0].detach().cpu().numpy()
+                                      + (match_vectors_gt[0].reshape(2, -1) * (s - 1)).detach().cpu().numpy()),
                              0, s - 1).astype(int)
         targ_xy_1d = targ_xy_2d[0] + targ_xy_2d[1] * s
         conf_targ = hmb.flatten()[targ_xy_1d]
@@ -235,7 +235,8 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
         matches_xy_gt_ = np.vstack([nmatch.p_xy[0].detach().cpu().numpy()[:, f], txy]).T
 
         match_viz_gt_ = utils.drawMatches(blended_viz_a, matches_xy_gt_[:, :2], blended_viz_b, matches_xy_gt_[:, 2:])
-
+        cv2.imwrite('a.png', match_viz_gt)
+        cv2.imwrite('a_.png', match_viz_gt_)
         # TODO: [bug] make sure match_viz_gt_ == match_viz_gt
 
         suffix += '-gt'

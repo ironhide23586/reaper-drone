@@ -97,8 +97,11 @@ def drawMatches(img1, kp1, img2, kp2):
     (x2, y2) = kp2[mi]
     # cv2.circle(out, (int(x1), int(y1)), 4, colors[mi], 1)
     # cv2.circle(out, (int(x2) + cols1, int(y2)), 4, colors[mi], 1)
-    cv2.line(out, (int(x1), int(y1)), (int(x2) + cols1, int(y2)), (int(colors[mi][0]),
-                                                                   int(colors[mi][1]), int(colors[mi][2])), 1)
+
+    cv2.line(out, (int(x1), int(y1)), (int(x2) + cols1, int(y2)), (255, 0, 0), 1)
+
+    # cv2.line(out, (int(x1), int(y1)), (int(x2) + cols1, int(y2)), (int(colors[mi][0]),
+    #                                                                int(colors[mi][1]), int(colors[mi][2])), 1)
   return out
 
 
