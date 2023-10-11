@@ -13,56 +13,15 @@ Website: https://www.linkedin.com/in/souham/
 """
 
 import os
-import json
 
 import torch
 import cv2
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from torchvision import transforms
-from tqdm import tqdm
 
 import utils
-
-tensor_transform = transforms.ToTensor()
-input_transforms = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
-
-def viz_heatmap(heatmap):
-    hm = np.tile(np.expand_dims(heatmap, -1), [1, 1, 3])
-    lc = np.tile([[[0, 0, 255]]], [hm.shape[0], hm.shape[1], 1])
-    hc = np.tile([[[255, 140, 0]]], [hm.shape[0], hm.shape[1], 1])
-    hm_ = (hc * hm) + (lc * (1. - hm))
-    return (hm_ * 255).astype(np.uint8)
-
-
-def viz_match_vectors(match_vectors):
-    mv = (np.tile(match_vectors.detach().cpu().numpy(), [3, 1, 1]) + 1.) / 2.
-    v = np.zeros([mv.shape[1], mv.shape[2], 3]).astype(np.uint8)
-    lc = np.tile([[[0, 0, 255]]], [v.shape[0], v.shape[1], 1])
-    hc = np.tile([[[255, 140, 0]]], [v.shape[0], v.shape[1], 1])
-    m0 = np.tile(np.expand_dims(mv[0], -1), (1, 1, 3)) * lc
-    m1 = np.tile(np.expand_dims(mv[1], -1), (1, 1, 3)) * hc
-    viz = ((m0 + m1) / 2.).astype(np.uint8)
-    return viz
-
-
-def viz_matches(a, b, out_masks, out_matches, blend_coeff=.65):
-    (heatmap, match_vectors_pred, conf_mask), (match_xy_pairs_, confs) = out_masks, out_matches
-    match_xy_pairs = match_xy_pairs_[0]
-    hm_a = viz_heatmap(heatmap[0][0].detach().cpu().numpy())
-    hm_b = viz_heatmap(heatmap[0][1].detach().cpu().numpy())
-
-    blended_viz_a = blend_coeff * hm_a + (1. - blend_coeff) * a
-    blended_viz_b = blend_coeff * hm_b + (1. - blend_coeff) * b
-
-    img = utils.drawMatches(blended_viz_a, match_xy_pairs[:, :2].detach().cpu().numpy(),
-                            blended_viz_b, match_xy_pairs[:, 2:].detach().cpu().numpy())
-    match_vectors_pred_viz = viz_match_vectors(match_vectors_pred[0])
-    conf_mask_viz = (conf_mask[0].detach().cpu().numpy() * 255).astype(np.uint8)
-
-    return img, hm_a, hm_b, match_vectors_pred_viz, conf_mask_viz
+from neural_matcher.eval import infer_nn, viz_heatmap, viz_match_vectors, score_model
 
 
 def pxys_to_match_vectors_mask(pxys):
@@ -70,84 +29,56 @@ def pxys_to_match_vectors_mask(pxys):
     for bi in range(len(pxys)):
         v = (pxys[bi][:, 2:] - pxys[bi][:, :2]) / (utils.SIDE - 1)
         match_vectors_mask[bi, :, pxys[bi][:, 1], pxys[bi][:, 0]] = torch.Tensor(v.T)
+        match_vectors_mask[bi, :, pxys[bi][:, 3], pxys[bi][:, 2]] = -torch.Tensor(v.T)
     return match_vectors_mask
 
 
 def collater(data):
     ims = []
-    pxys = []
+    match_xys_gt = []
     heatmaps = []
     for d in data:
         x = d[0] / 255.
-        ims.append(input_transforms(torch.Tensor(x)))
-        pxys.append(torch.Tensor(d[1].astype(int)).int())
+        ims.append(utils.INPUT_TRANSFORMS(torch.Tensor(x)))
+        match_xys_gt.append(torch.Tensor(np.round(d[1]).astype(int)).int())
         heatmaps.append(d[2])
-    heatmaps = torch.Tensor(np.stack(heatmaps))
+
+    hm_gt = torch.Tensor(np.stack(heatmaps))
     ims = torch.stack(ims)
-    match_vectors_gt = pxys_to_match_vectors_mask(pxys)
-    return ims, pxys, heatmaps, match_vectors_gt
+    match_vectors_gt = pxys_to_match_vectors_mask(match_xys_gt)
 
+    conf_masks_gt = []
+    confs_gt = []
+    p_xy = np.vstack(np.meshgrid(np.arange(utils.SIDE), np.arange(utils.SIDE), indexing='xy')).reshape(2, -1)
+    for bi in range(len(data)):
+        targ_xy_2d = np.clip(np.round(p_xy + (match_vectors_gt[bi].reshape(2, -1)
+                                              * (utils.SIDE - 1)).detach().cpu().numpy()),
+                             0, utils.SIDE - 1).astype(int)
+        targ_xy_1d = targ_xy_2d[0] + targ_xy_2d[1] * utils.SIDE
+        conf_targ = hm_gt[bi][1].flatten()[targ_xy_1d]
+        conf_mask_gt_1d = (hm_gt[bi][0].flatten() + conf_targ) / 2.
+        f = targ_xy_1d[match_xys_gt[bi][:, 3] * utils.SIDE + match_xys_gt[bi][:, 2]]
+        # f_ = p_xy[:, match_xys_gt[bi][:, 1] * utils.SIDE + match_xys_gt[bi][:, 0]]  # verified equivalent to above
+        # f = f_[0] + f_[1] * utils.SIDE
+        conf_masks_gt.append(conf_mask_gt_1d)
+        confs = conf_mask_gt_1d[f]
+        confs_gt.append(confs)
 
-def input_preprocess(im):
-    min_s = min(im.width, im.height)
-    x_offset = (im.width - min_s) // 2
-    y_offset = (im.height - min_s) // 2
-    frame_square = np.array(im)[y_offset: y_offset + min_s, x_offset: x_offset + min_s]
-    frame_square = cv2.resize(frame_square, (utils.SIDE, utils.SIDE))[:, :, [2, 1, 0]]
-    return frame_square
+        # f = conf_mask_gt_1d > 0.5
+        # src_xy_2d = torch.Tensor(p_xy[:, f]).int()
+        # targ_xy_2d_ = torch.clamp(src_xy_2d + (match_vectors_gt[bi].reshape(2, -1)[:, f]
+        #                                        * (utils.SIDE - 1)).round().int(), 0, utils.SIDE - 1)
+        # match_xys_gt_ = torch.vstack([src_xy_2d, targ_xy_2d_]).T.numpy()
+        # ima = utils.drawMatches(np.rollaxis(data[0][0][0], 0, 3), match_xys_gt[bi][:, :2],
+        #                         np.rollaxis(data[0][0][1], 0, 3), match_xys_gt[bi][:, 2:])
+        # ima_ = utils.drawMatches(np.rollaxis(data[0][0][0], 0, 3), match_xys_gt_[:, :2],
+        #                          np.rollaxis(data[0][0][1], 0, 3), match_xys_gt_[:, 2:])
+        # cv2.imwrite('a.png', ima)
+        # cv2.imwrite('a_.png', ima_)
+        # k = 0
 
-
-def infer_nn(nmatch, ima, imb, device):
-    ima_pp = input_preprocess(ima)
-    imb_pp = input_preprocess(imb)
-    im_a = tensor_transform(ima_pp).to(device)
-    im_b = tensor_transform(imb_pp).to(device)
-    t = torch.unsqueeze(torch.stack([input_transforms(im_a), input_transforms(im_b)]), 0)
-    nmatch.eval()
-    with torch.no_grad():
-        out_masks, out_matches = nmatch(t)
-    match_xy_pairs = out_matches[0][0]
-    match_viz, heatmap_a, heatmap_b, match_vectors_viz, conf_mask_viz = viz_matches(ima_pp, imb_pp, out_masks,
-                                                                                    out_matches)
-    nmatch.train()
-    return match_viz, heatmap_a, heatmap_b, match_vectors_viz, conf_mask_viz, match_xy_pairs, (ima_pp, imb_pp)
-
-
-def score_model(nmatch, data_loader, loss_fn, device):
-    print('Scoring model...')
-    score_dict = {'final_score': -1.,
-                  'precision': -1.,
-                  'recall': -1.,
-                  'val_loss': -1.}
-    val_loss = 0.
-    tps = 0
-    fps = 0
-    fns = 0
-    ni = 0
-    with torch.no_grad():
-        for bi, (ims, pxys, heatmaps_gt) in enumerate(tqdm(data_loader)):
-            heatmaps_pred, y_out, (conf_match, match_xy_pairs, confs) = nmatch(ims, pxys)
-            loss, (tp, fp, fn) = loss_fn(y_out, heatmaps_pred, heatmaps_gt.to(device))
-            tps += tp
-            fps += fp
-            fns += fn
-            val_loss += float(loss.cpu().numpy())
-            ni += 1
-
-            val_loss_ = val_loss / ni
-            prec = float((tps / (tps + fps)).cpu().numpy())
-            rec = float((tps / (tps + fns)).cpu().numpy())
-            fsc = (2 * prec * rec) / (prec + rec)
-
-            score_dict['val_loss'] = val_loss_
-            score_dict['final_score'] = fsc
-            score_dict['precision'] = prec
-            score_dict['recall'] = rec
-            score_dict['num_samples'] = int(ni * data_loader.batch_size)
-
-            if bi % 5 == 0:
-                print(json.dumps(score_dict, indent=4, sort_keys=True))
-    return score_dict
+    conf_masks_gt = torch.stack(conf_masks_gt).reshape(-1, utils.SIDE, utils.SIDE)
+    return ims, ((hm_gt, match_vectors_gt, conf_masks_gt), (match_xys_gt, confs_gt))
 
 
 def matplotlib_imshow(img):
@@ -158,7 +89,7 @@ def matplotlib_imshow(img):
 
 class SIFTMatcher:
 
-    def __init__(self, sift_tolerance=.8, min_n_matches=5):
+    def __init__(self, sift_tolerance=.4, min_n_matches=5):
         self.side = utils.SIDE
         self.sift_tolerance = sift_tolerance
         self.min_n_matches = int(min_n_matches)
@@ -188,18 +119,18 @@ class SIFTMatcher:
         return y, (good, kp_a, kp_b)
 
 
-def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
+def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id,
                      log_fname, val_df_dict, viz_dir, writer, g_idx, ksize, radius_scale, blend_coeff):
     nmatch.eval()
     suffix = '-'.join([str(ei) + 'e', str(bi) + 'b'])
     sess_id_ = sess_id + '_' + suffix
 
-    match_viz, heatmap_a, heatmap_b, match_vectors_viz, conf_mask_viz, matches_xy, (ima_pp, imb_pp) = infer_nn(nmatch,
-                                                                                                               ima,
-                                                                                                               imb,
-                                                                                                               device)
+    match_viz, heatmap_a, heatmap_b, match_vectors_viz, conf_mask_viz, inference_outs, \
+        (ima_pp, imb_pp) = infer_nn(nmatch, ima, imb, device)
+    _, (matches_xy, confs) = inference_outs
+
     fn_prefix = '_'.join(['viz', sess_id])
-    suffix = '-'.join([str(ei) + 'e', str(bi) + 'b', str(matches_xy.shape[0]) + 'kp'])
+    suffix = '-'.join([str(ei) + 'e', str(bi) + 'b', str(matches_xy[0].shape[0]) + 'kp'])
     print('VIZ:', suffix)
 
     gt_viz_dir = viz_dir + '/gt'
@@ -209,6 +140,7 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
         s = heatmap_a.shape[0]
         matches_xy_gt, _ = sm.sift_match(ima_pp, imb_pp)
         matches_xy_gt = np.round(np.clip(matches_xy_gt, 0, s - 1)).astype(int)
+
         hma = utils.create_heatmap(matches_xy_gt[:, :2], s, ksize=ksize,  radius_scale=radius_scale,
                                    blend_coeff=blend_coeff)
         hmb = utils.create_heatmap(matches_xy_gt[:, 2:], s, ksize=ksize, radius_scale=radius_scale,
@@ -229,34 +161,44 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
         targ_xy_1d = targ_xy_2d[0] + targ_xy_2d[1] * s
         conf_targ = hmb.flatten()[targ_xy_1d]
         conf_mask_gt = (hma.flatten() + conf_targ) / 2.
-        f = conf_mask_gt > nmatch.heatmap_thresh.item()
-        # conf_mask_gt = conf_mask_gt.reshape(s, s)
-        txy = targ_xy_2d[:, f]
-        matches_xy_gt_ = np.vstack([nmatch.p_xy[0].detach().cpu().numpy()[:, f], txy]).T
 
-        match_viz_gt_ = utils.drawMatches(blended_viz_a, matches_xy_gt_[:, :2], blended_viz_b, matches_xy_gt_[:, 2:])
-        cv2.imwrite('a.png', match_viz_gt)
-        cv2.imwrite('a_.png', match_viz_gt_)
-        # TODO: [bug] make sure match_viz_gt_ == match_viz_gt
+        f = conf_mask_gt > nmatch.heatmap_thresh.item()
+        txy = targ_xy_2d[:, f]
+        confs_gt = conf_mask_gt[f]
+        matches_xy_gt_ = np.vstack([nmatch.p_xy[0].detach().cpu().numpy()[:, f], txy]).T
+        match_viz_gt_ = utils.drawMatches(blended_viz_a, matches_xy_gt_[:, :2], blended_viz_b, matches_xy_gt_[:, 2:],
+                                          confs=[confs_gt])
+
+        conf_mask_gt_viz = viz_heatmap(conf_mask_gt.reshape(s, s))
 
         suffix += '-gt'
         mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'matches', suffix + '.jpg'])])
         cv2.imwrite(mn, match_viz_gt)
+        mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'matches-reconstructed', suffix + '.jpg'])])
+        cv2.imwrite(mn, match_viz_gt_)
         mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'heatmap-a', suffix + '.jpg'])])
         cv2.imwrite(mn, heatmap_a_gt)
         mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'heatmap-b', suffix + '.jpg'])])
         cv2.imwrite(mn, heatmap_b_gt)
         mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'vectors', suffix + '.jpg'])])
         cv2.imwrite(mn, match_vectors_gt_viz)
-        # mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'match-confidence', suffix + '.jpg'])])
-        # cv2.imwrite(mn, conf_mask_viz)
+        mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'match-confidence', suffix + '.jpg'])])
+        cv2.imwrite(mn, conf_mask_gt_viz)
+
+        hm_gt = torch.Tensor([np.array([hma, hmb])])
+        gt_outs = (hm_gt, match_vectors_gt, torch.Tensor([conf_mask_gt]).reshape(-1, s, s)), \
+            ([torch.Tensor(matches_xy_gt)], [torch.Tensor(confs_gt)])
 
         writer.add_figure('match_viz-gt', matplotlib_imshow(match_viz), global_step=g_idx)
         writer.add_figure('heatmap-a-gt', matplotlib_imshow(heatmap_a), global_step=g_idx)
         writer.add_figure('heatmap-b-gt', matplotlib_imshow(heatmap_b), global_step=g_idx)
         writer.add_figure('match_vectors_viz-gt', matplotlib_imshow(match_vectors_viz), global_step=g_idx)
-        # writer.add_figure('match_confidence', matplotlib_imshow(conf_mask_viz), global_step=g_idx)
+        writer.add_figure('match_confidence', matplotlib_imshow(conf_mask_viz), global_step=g_idx)
 
+    with torch.no_grad():
+        (example_loss, example_vector_loss, example_conf_loss, vector_loss_map), (tp, fp, fn) = loss_fn(inference_outs,
+                                                                                                        gt_outs)
+    vector_loss_viz = viz_heatmap(vector_loss_map[0].detach().cpu().numpy())
 
     mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'matches', suffix + '.jpg'])])
     cv2.imwrite(mn, match_viz)
@@ -268,37 +210,61 @@ def checkpoint_model(nmatch, train_loss, device, data_loader_val, ima, imb, mode
     cv2.imwrite(mn, match_vectors_viz)
     mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'match-confidence', suffix + '.jpg'])])
     cv2.imwrite(mn, conf_mask_viz)
+    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, '-vector-lossmap', suffix + '.jpg'])])
+    cv2.imwrite(mn, vector_loss_viz)
 
     writer.add_figure('match_viz', matplotlib_imshow(match_viz), global_step=g_idx)
     writer.add_figure('heatmap-a', matplotlib_imshow(heatmap_a), global_step=g_idx)
     writer.add_figure('heatmap-b', matplotlib_imshow(heatmap_b), global_step=g_idx)
     writer.add_figure('match_vectors_viz', matplotlib_imshow(match_vectors_viz), global_step=g_idx)
     writer.add_figure('match_confidence', matplotlib_imshow(conf_mask_viz), global_step=g_idx)
+    writer.add_figure('vector_loss_map', matplotlib_imshow(vector_loss_viz), global_step=g_idx)
 
     score_dict = score_model(nmatch, data_loader_val, loss_fn, device)
+
     val_df_dict['epoch'].append(ei)
     val_df_dict['epoch_batch_iteration'].append(bi)
-    val_df_dict['final_score'].append(score_dict['final_score'])
-    val_df_dict['precision'].append(score_dict['precision'])
-    val_df_dict['recall'].append(score_dict['recall'])
-    val_df_dict['val_loss'].append(score_dict['val_loss'])
 
-    writer.add_scalar('final_score', score_dict['final_score'], g_idx)
-    writer.add_scalar('precision', score_dict['precision'], g_idx)
-    writer.add_scalar('recall', score_dict['recall'], g_idx)
+    writer.add_scalar('val_fscore', score_dict['final_score'], g_idx)
     writer.add_scalar('val_loss', score_dict['val_loss'], g_idx)
+    writer.add_scalar('val_example_loss', example_loss, g_idx)
+    writer.add_scalar('val_example_vector_loss', example_vector_loss, g_idx)
+    writer.add_scalar('val_example_conf_loss', example_conf_loss, g_idx)
 
-    if train_loss is not None:
-        val_df_dict['train_loss'].append(train_loss)
+    writer.add_scalar('val_precision', score_dict['precision'], g_idx)
+    writer.add_scalar('val_recall', score_dict['recall'], g_idx)
+
+    if train_measures is not None:
+        train_losses, grad_measures = train_measures
+        running_loss, running_vector_loss, running_conf_loss = train_losses
+        running_g_mean, running_g_std, running_g_max, running_g_min = grad_measures
     else:
-        val_df_dict['train_loss'].append(-1.)
+        running_loss = 0.
+        running_vector_loss = 0.
+        running_conf_loss = 0.
+        running_g_mean = 0.
+        running_g_std = 0.
+        running_g_max = 0.
+        running_g_min = 0.
+    score_dict['train_loss'] = running_loss
+    score_dict['train_vector_loss'] = running_vector_loss
+    score_dict['train_conf_loss'] = running_conf_loss
+    score_dict['train_grad_mean'] = running_g_mean
+    score_dict['train_grad_std'] = running_g_std
+    score_dict['train_grad_max'] = running_g_max
+
+    for k in score_dict.keys():
+        if k not in val_df_dict.keys():
+            val_df_dict[k] = [score_dict[k]]
+        else:
+            val_df_dict[k].append(score_dict[k])
     val_df_dict['num_samples'].append(score_dict['num_samples'])
 
-    score_tag = '_' + str(score_dict['final_score']) + '-fsc'
+    score_tag = '_' + str(score_dict['val_loss']) + '_val-loss'
     val_df = pd.DataFrame(val_df_dict)
     val_df.to_csv(log_fname, index=False)
 
-    fn = 'neuramatch-' + sess_id_ + score_tag + '.pt'
+    fn = 'neuramatch_' + sess_id_ + score_tag + '.pt'
     out_fp = model_dir + '/' + fn
     print('Saving to', out_fp)
     torch.save(nmatch.state_dict(), out_fp)

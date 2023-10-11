@@ -74,6 +74,7 @@ class NeuraMatch(nn.Module):
                                                nn.BatchNorm2d(16), nn.LeakyReLU(),
                                                nn.ConvTranspose2d(16, 2, 6, 1, bias=True),
                                                nn.Sigmoid())
+        self.to(self.device)
 
     def extract_descriptors(self, p_xy_kp_a, p_xy_kp_b, s, f_a, f_b, heatmap_1d):
         p_xy_kp_a_1d = p_xy_kp_a[:, 0] + p_xy_kp_a[:, 1] * s
@@ -88,14 +89,10 @@ class NeuraMatch(nn.Module):
         y_sel = (torch.squeeze(self.matcher(f_ab_sel)) + heatmap_1d_sel_a + heatmap_1d_sel_b) / 3.
         return y_sel, f_ab_sel
 
-    def forward(self, x_, gt_xy_pairs_=None):
+    def forward(self, x_):
         x = x_.to(self.device)
         x_a = x[:, 0]
         x_b = x[:, 1]
-        gt_xy_pairs = None
-        if gt_xy_pairs_ is not None:
-            gt_xy_pairs = [p.to(self.device) for p in gt_xy_pairs_]
-
         f_a_raw = self.conv0_block_a(x_a)
         f_b_raw = self.conv0_block_b(x_b)
 
@@ -108,7 +105,7 @@ class NeuraMatch(nn.Module):
         s = self.side
         nb = x_a.shape[0]
 
-        mv = (match_vectors_pred.reshape(-1, 2, s * s) * (s - 1)).int()
+        mv = (match_vectors_pred.reshape(-1, 2, s * s) * (s - 1)).round().int()
 
         p_xy_tiled = torch.tile(torch.unsqueeze(self.p_xy[0], 0), (nb, 1, 1))
 
