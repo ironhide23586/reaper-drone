@@ -128,6 +128,7 @@ if __name__ == '__main__':
     running_g_std = 0.
     running_g_max = 0.
     running_g_min = 0.
+    den = 0.
 
     prev_running_loss = running_loss
     for ei in range(NUM_EPOCHS):
@@ -154,16 +155,23 @@ if __name__ == '__main__':
             g_max = grad_extract(torch.max)
             g_min = grad_extract(torch.min)
 
+            running_g_mean += g_mean
+            running_g_std += g_std
+            running_g_max += g_max
+            running_g_min += g_min
+            den += 1.
+
             opt.step()
 
             if bi % RUNNING_LOSS_WINDOW == 0:
-                running_loss /= RUNNING_LOSS_WINDOW
-                running_vector_loss /= RUNNING_LOSS_WINDOW
-                running_conf_loss /= RUNNING_LOSS_WINDOW
-                running_g_mean /= RUNNING_LOSS_WINDOW
-                running_g_std /= RUNNING_LOSS_WINDOW
-                running_g_max /= RUNNING_LOSS_WINDOW
-                running_g_min /= RUNNING_LOSS_WINDOW
+                den = max(den, 1.)
+                running_loss /= den
+                running_vector_loss /= den
+                running_conf_loss /= den
+                running_g_mean /= den
+                running_g_std /= den
+                running_g_max /= den
+                running_g_min /= den
                 prev_running_losses = [running_loss, running_vector_loss, running_conf_loss]
                 prev_running_grad_measures = [running_g_mean, running_g_std, running_g_max, running_g_min]
                 print('Loss:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', running_loss)
@@ -188,7 +196,7 @@ if __name__ == '__main__':
                 running_g_std = 0.
                 running_g_max = 0.
                 running_g_min = 0.
-
+                den = 0.
             if bi % SAVE_EVERY_N_BATCHES == 0 and bi > 0:
                 checkpoint_model(nmatch, (prev_running_losses, prev_running_grad_measures), device, data_loader_val,
                                  ima, imb, model_dir, loss_fn, ei,
