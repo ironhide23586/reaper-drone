@@ -82,7 +82,7 @@ def infer_nn(nmatch, ima, imb, device):
     return match_viz, heatmap_a, heatmap_b, match_vectors_viz, conf_mask_viz, inference_outs, (ima_pp, imb_pp)
 
 
-def score_model(nmatch, data_loader, loss_fn, device):
+def score_model(nmatch, data_loader, loss_fn):
     print('Scoring model...')
     score_dict = {}
     val_loss = 0.

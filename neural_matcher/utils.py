@@ -187,7 +187,7 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
         cv2.imwrite(mn, conf_mask_gt_viz)
 
         hm_gt = torch.Tensor(np.expand_dims(np.array([hma, hmb]), 0))
-        gt_outs = (hm_gt, match_vectors_gt, torch.Tensor([conf_mask_gt]).reshape(-1, s, s)), \
+        gt_outs = (hm_gt, match_vectors_gt, torch.Tensor(np.expand_dims(conf_mask_gt, 0)).reshape(-1, s, s)), \
             ([torch.Tensor(matches_xy_gt)], [torch.Tensor(confs_gt)])
 
         writer.add_figure('match_viz-gt', matplotlib_imshow(match_viz), global_step=g_idx)
@@ -221,10 +221,7 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
     writer.add_figure('match_confidence', matplotlib_imshow(conf_mask_viz), global_step=g_idx)
     writer.add_figure('vector_loss_map', matplotlib_imshow(vector_loss_viz), global_step=g_idx)
 
-    score_dict = score_model(nmatch, data_loader_val, loss_fn, device)
-
-    val_df_dict['epoch'].append(ei)
-    val_df_dict['epoch_batch_iteration'].append(bi)
+    score_dict = score_model(nmatch, data_loader_val, loss_fn)
 
     writer.add_scalar('val_fscore', score_dict['fscore'], g_idx)
     writer.add_scalar('val_loss', score_dict['val_loss'], g_idx)
@@ -246,19 +243,22 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
         running_g_std = 0.
         running_g_max = 0.
         running_g_min = 0.
+
+    score_dict['epoch'] = ei
+    score_dict['epoch_batch_iteration'] = bi
     score_dict['train_loss'] = running_loss
     score_dict['train_vector_loss'] = running_vector_loss
     score_dict['train_conf_loss'] = running_conf_loss
     score_dict['train_grad_mean'] = running_g_mean
     score_dict['train_grad_std'] = running_g_std
     score_dict['train_grad_max'] = running_g_max
+    score_dict['train_grad_min'] = running_g_min
 
     for k in score_dict.keys():
         if k not in val_df_dict.keys():
             val_df_dict[k] = [score_dict[k]]
         else:
             val_df_dict[k].append(score_dict[k])
-    val_df_dict['num_samples'].append(score_dict['num_samples'])
 
     score_tag = '_' + str(score_dict['val_loss']) + '_val-loss'
     val_df = pd.DataFrame(val_df_dict)
