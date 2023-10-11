@@ -96,7 +96,8 @@ class SIFTMatcher:
         self.tag = '_'.join([str(sift_tolerance) + '.sift-tolerance',
                              str(min_n_matches) + '.min-n-matches',
                              str(self.side) + '.side'])
-        self.keypoint_detector = cv2.xfeatures2d.SIFT_create()
+        # self.keypoint_detector = cv2.xfeatures2d.SIFT_create()
+        self.keypoint_detector = cv2.SIFT_create()
         self.keypoint_matcher = cv2.BFMatcher()
 
     def sift_match(self, im_a, im_b):
@@ -225,12 +226,11 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
     val_df_dict['epoch'].append(ei)
     val_df_dict['epoch_batch_iteration'].append(bi)
 
-    writer.add_scalar('val_fscore', score_dict['final_score'], g_idx)
+    writer.add_scalar('val_fscore', score_dict['fscore'], g_idx)
     writer.add_scalar('val_loss', score_dict['val_loss'], g_idx)
     writer.add_scalar('val_example_loss', example_loss, g_idx)
     writer.add_scalar('val_example_vector_loss', example_vector_loss, g_idx)
     writer.add_scalar('val_example_conf_loss', example_conf_loss, g_idx)
-
     writer.add_scalar('val_precision', score_dict['precision'], g_idx)
     writer.add_scalar('val_recall', score_dict['recall'], g_idx)
 
