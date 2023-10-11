@@ -12,7 +12,7 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = 'scratchspace/trained_models/vegan-bustard-matcher.11-10-2023.11_38_00/model_files/neuramatch_vegan-bustard-matcher_9e-974b_0.08578242534285695_val-loss.pt'
+RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/vegan-bustard-matcher.11-10-2023.11_38_00/model_files/neuramatch_vegan-bustard-matcher_9e-974b_0.08578242534285695_val-loss.pt'
 TRAIN_MODULE = 'matcher'  # 'heatmap' or 'matcher'
 LEARN_RATE = 1e-4
 BATCH_SIZE = 8
