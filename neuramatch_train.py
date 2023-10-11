@@ -12,14 +12,14 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/vegan-bustard-matcher.11-10-2023.11_38_00/model_files/neuramatch_vegan-bustard-matcher_9e-974b_0.08578242534285695_val-loss.pt'
+RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/practical-puma-all.11-10-2023.15_14_44/model_files/neuramatch_practical-puma-all_35e-600b_0.31935256754091307_val-loss.pt'
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
 LEARN_RATE = 1e-4
 BATCH_SIZE = 8
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
-KSIZE = 13
+KSIZE = 5
 RADIUS_SCALE = .3
 BLEND_COEFF = .55
 TVERSKY_SMOOTH = 1.

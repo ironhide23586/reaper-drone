@@ -172,18 +172,18 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
 
     conf_mask_gt_viz = viz_heatmap(conf_mask_gt.reshape(s, s))
 
-    suffix += '-gt'
-    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'matches', suffix + '.jpg'])])
+    suffix_ = sess_id + '_gt'
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'matches', suffix_ + '.jpg'])])
     cv2.imwrite(mn, match_viz_gt)
-    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'matches-reconstructed', suffix + '.jpg'])])
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'matches-reconstructed', suffix_ + '.jpg'])])
     cv2.imwrite(mn, match_viz_gt_)
-    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'heatmap-a', suffix + '.jpg'])])
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'heatmap-a', suffix_ + '.jpg'])])
     cv2.imwrite(mn, heatmap_a_gt)
-    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'heatmap-b', suffix + '.jpg'])])
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'heatmap-b', suffix_ + '.jpg'])])
     cv2.imwrite(mn, heatmap_b_gt)
-    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'vectors', suffix + '.jpg'])])
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'vectors', suffix_ + '.jpg'])])
     cv2.imwrite(mn, match_vectors_gt_viz)
-    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'match-confidence', suffix + '.jpg'])])
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'match-confidence', suffix_ + '.jpg'])])
     cv2.imwrite(mn, conf_mask_gt_viz)
 
     hm_gt = torch.Tensor(np.expand_dims(np.array([hma, hmb]), 0))
@@ -200,18 +200,18 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
         (example_loss, example_vector_loss, example_conf_loss, vector_loss_map), (tp, fp, fn) = loss_fn(inference_outs,
                                                                                                         gt_outs)
     vector_loss_viz = viz_heatmap(vector_loss_map[0].detach().cpu().numpy())
-
-    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'matches', suffix + '.jpg'])])
+    suffix_ = suffix + '-pred'
+    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'matches', suffix_ + '.jpg'])])
     cv2.imwrite(mn, match_viz)
-    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-a', suffix + '.jpg'])])
+    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-a', suffix_ + '.jpg'])])
     cv2.imwrite(mn, heatmap_a)
-    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-b', suffix + '.jpg'])])
+    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'heatmap-b', suffix_ + '.jpg'])])
     cv2.imwrite(mn, heatmap_b)
-    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'vectors', suffix + '.jpg'])])
+    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'vectors', suffix_ + '.jpg'])])
     cv2.imwrite(mn, match_vectors_viz)
-    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'match-confidence', suffix + '.jpg'])])
+    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'match-confidence', suffix_ + '.jpg'])])
     cv2.imwrite(mn, conf_mask_viz)
-    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, '-vector-lossmap', suffix + '.jpg'])])
+    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, '-vector-lossmap', suffix_ + '.jpg'])])
     cv2.imwrite(mn, vector_loss_viz)
 
     writer.add_figure('match_viz-pred', matplotlib_imshow(match_viz), global_step=g_idx)
@@ -225,6 +225,9 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
 
     for k in score_dict.keys():
         writer.add_scalar(k, score_dict[k], g_idx)
+    writer.add_scalar('val_example_loss', example_loss, g_idx)
+    writer.add_scalar('val_example_vector_loss', example_vector_loss, g_idx)
+    writer.add_scalar('val_example_conf_loss', example_conf_loss, g_idx)
 
     if train_measures is not None:
         train_losses, grad_measures = train_measures
