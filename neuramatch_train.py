@@ -119,8 +119,8 @@ if __name__ == '__main__':
     val_df_dict = {'epoch': [],
                    'epoch_batch_iteration': []}
 
-    # checkpoint_model(nmatch, None, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
-    #                  val_df_dict, viz_dir, writer, 0, KSIZE, RADIUS_SCALE, BLEND_COEFF)
+    checkpoint_model(nmatch, None, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
+                     val_df_dict, viz_dir, writer, 0, KSIZE, RADIUS_SCALE, BLEND_COEFF)
     running_loss = 0.
     running_vector_loss = 0.
     running_conf_loss = 0.
