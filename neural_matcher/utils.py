@@ -135,66 +135,66 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
     print('VIZ:', suffix)
 
     gt_viz_dir = viz_dir + '/gt'
-    if not os.path.isdir(gt_viz_dir):
-        os.makedirs(gt_viz_dir)
-        sm = SIFTMatcher()
-        s = heatmap_a.shape[0]
-        matches_xy_gt, _ = sm.sift_match(ima_pp, imb_pp)
-        matches_xy_gt = np.round(np.clip(matches_xy_gt, 0, s - 1)).astype(int)
+    # if not os.path.isdir(gt_viz_dir):
+    os.makedirs(gt_viz_dir, exist_ok=True)
+    sm = SIFTMatcher()
+    s = heatmap_a.shape[0]
+    matches_xy_gt, _ = sm.sift_match(ima_pp, imb_pp)
+    matches_xy_gt = np.round(np.clip(matches_xy_gt, 0, s - 1)).astype(int)
 
-        hma = utils.create_heatmap(matches_xy_gt[:, :2], s, ksize=ksize,  radius_scale=radius_scale,
-                                   blend_coeff=blend_coeff)
-        hmb = utils.create_heatmap(matches_xy_gt[:, 2:], s, ksize=ksize, radius_scale=radius_scale,
-                                   blend_coeff=blend_coeff)
-        heatmap_a_gt = viz_heatmap(hma)
-        heatmap_b_gt = viz_heatmap(hmb)
-        blended_viz_a = blend_coeff * heatmap_a_gt + (1. - blend_coeff) * ima_pp
-        blended_viz_b = blend_coeff * heatmap_b_gt + (1. - blend_coeff) * imb_pp
+    hma = utils.create_heatmap(matches_xy_gt[:, :2], s, ksize=ksize,  radius_scale=radius_scale,
+                               blend_coeff=blend_coeff)
+    hmb = utils.create_heatmap(matches_xy_gt[:, 2:], s, ksize=ksize, radius_scale=radius_scale,
+                               blend_coeff=blend_coeff)
+    heatmap_a_gt = viz_heatmap(hma)
+    heatmap_b_gt = viz_heatmap(hmb)
+    blended_viz_a = blend_coeff * heatmap_a_gt + (1. - blend_coeff) * ima_pp
+    blended_viz_b = blend_coeff * heatmap_b_gt + (1. - blend_coeff) * imb_pp
 
-        match_viz_gt = utils.drawMatches(blended_viz_a, matches_xy_gt[:, :2], blended_viz_b, matches_xy_gt[:, 2:])
+    match_viz_gt = utils.drawMatches(blended_viz_a, matches_xy_gt[:, :2], blended_viz_b, matches_xy_gt[:, 2:])
 
-        match_vectors_gt = pxys_to_match_vectors_mask([matches_xy_gt])
-        match_vectors_gt_viz = viz_match_vectors(match_vectors_gt[0])
+    match_vectors_gt = pxys_to_match_vectors_mask([matches_xy_gt])
+    match_vectors_gt_viz = viz_match_vectors(match_vectors_gt[0])
 
-        targ_xy_2d = np.clip(np.round(nmatch.p_xy[0].detach().cpu().numpy()
-                                      + (match_vectors_gt[0].reshape(2, -1) * (s - 1)).detach().cpu().numpy()),
-                             0, s - 1).astype(int)
-        targ_xy_1d = targ_xy_2d[0] + targ_xy_2d[1] * s
-        conf_targ = hmb.flatten()[targ_xy_1d]
-        conf_mask_gt = (hma.flatten() + conf_targ) / 2.
+    targ_xy_2d = np.clip(np.round(nmatch.p_xy[0].detach().cpu().numpy()
+                                  + (match_vectors_gt[0].reshape(2, -1) * (s - 1)).detach().cpu().numpy()),
+                         0, s - 1).astype(int)
+    targ_xy_1d = targ_xy_2d[0] + targ_xy_2d[1] * s
+    conf_targ = hmb.flatten()[targ_xy_1d]
+    conf_mask_gt = (hma.flatten() + conf_targ) / 2.
 
-        f = conf_mask_gt > nmatch.heatmap_thresh.item()
-        txy = targ_xy_2d[:, f]
-        confs_gt = conf_mask_gt[f]
-        matches_xy_gt_ = np.vstack([nmatch.p_xy[0].detach().cpu().numpy()[:, f], txy]).T
-        match_viz_gt_ = utils.drawMatches(blended_viz_a, matches_xy_gt_[:, :2], blended_viz_b, matches_xy_gt_[:, 2:],
-                                          confs=[confs_gt])
+    f = conf_mask_gt > nmatch.heatmap_thresh.item()
+    txy = targ_xy_2d[:, f]
+    confs_gt = conf_mask_gt[f]
+    matches_xy_gt_ = np.vstack([nmatch.p_xy[0].detach().cpu().numpy()[:, f], txy]).T
+    match_viz_gt_ = utils.drawMatches(blended_viz_a, matches_xy_gt_[:, :2], blended_viz_b, matches_xy_gt_[:, 2:],
+                                      confs=[confs_gt])
 
-        conf_mask_gt_viz = viz_heatmap(conf_mask_gt.reshape(s, s))
+    conf_mask_gt_viz = viz_heatmap(conf_mask_gt.reshape(s, s))
 
-        suffix += '-gt'
-        mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'matches', suffix + '.jpg'])])
-        cv2.imwrite(mn, match_viz_gt)
-        mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'matches-reconstructed', suffix + '.jpg'])])
-        cv2.imwrite(mn, match_viz_gt_)
-        mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'heatmap-a', suffix + '.jpg'])])
-        cv2.imwrite(mn, heatmap_a_gt)
-        mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'heatmap-b', suffix + '.jpg'])])
-        cv2.imwrite(mn, heatmap_b_gt)
-        mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'vectors', suffix + '.jpg'])])
-        cv2.imwrite(mn, match_vectors_gt_viz)
-        mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'match-confidence', suffix + '.jpg'])])
-        cv2.imwrite(mn, conf_mask_gt_viz)
+    suffix += '-gt'
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'matches', suffix + '.jpg'])])
+    cv2.imwrite(mn, match_viz_gt)
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'matches-reconstructed', suffix + '.jpg'])])
+    cv2.imwrite(mn, match_viz_gt_)
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'heatmap-a', suffix + '.jpg'])])
+    cv2.imwrite(mn, heatmap_a_gt)
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'heatmap-b', suffix + '.jpg'])])
+    cv2.imwrite(mn, heatmap_b_gt)
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'vectors', suffix + '.jpg'])])
+    cv2.imwrite(mn, match_vectors_gt_viz)
+    mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'match-confidence', suffix + '.jpg'])])
+    cv2.imwrite(mn, conf_mask_gt_viz)
 
-        hm_gt = torch.Tensor(np.expand_dims(np.array([hma, hmb]), 0))
-        gt_outs = (hm_gt, match_vectors_gt, torch.Tensor(np.expand_dims(conf_mask_gt, 0)).reshape(-1, s, s)), \
-            ([torch.Tensor(matches_xy_gt)], [torch.Tensor(confs_gt)])
+    hm_gt = torch.Tensor(np.expand_dims(np.array([hma, hmb]), 0))
+    gt_outs = (hm_gt, match_vectors_gt, torch.Tensor(np.expand_dims(conf_mask_gt, 0)).reshape(-1, s, s)), \
+        ([torch.Tensor(matches_xy_gt)], [torch.Tensor(confs_gt)])
 
-        writer.add_figure('match_viz-gt', matplotlib_imshow(match_viz), global_step=g_idx)
-        writer.add_figure('heatmap-a-gt', matplotlib_imshow(heatmap_a), global_step=g_idx)
-        writer.add_figure('heatmap-b-gt', matplotlib_imshow(heatmap_b), global_step=g_idx)
-        writer.add_figure('match_vectors_viz-gt', matplotlib_imshow(match_vectors_viz), global_step=g_idx)
-        writer.add_figure('match_confidence', matplotlib_imshow(conf_mask_viz), global_step=g_idx)
+    writer.add_figure('match_viz-gt', matplotlib_imshow(match_viz), global_step=g_idx)
+    writer.add_figure('heatmap-a-gt', matplotlib_imshow(heatmap_a), global_step=g_idx)
+    writer.add_figure('heatmap-b-gt', matplotlib_imshow(heatmap_b), global_step=g_idx)
+    writer.add_figure('match_vectors_viz-gt', matplotlib_imshow(match_vectors_viz), global_step=g_idx)
+    writer.add_figure('match_confidence', matplotlib_imshow(conf_mask_viz), global_step=g_idx)
 
     with torch.no_grad():
         (example_loss, example_vector_loss, example_conf_loss, vector_loss_map), (tp, fp, fn) = loss_fn(inference_outs,
