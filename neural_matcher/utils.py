@@ -186,7 +186,7 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
         mn = os.sep.join([gt_viz_dir, '_'.join([fn_prefix, 'match-confidence', suffix + '.jpg'])])
         cv2.imwrite(mn, conf_mask_gt_viz)
 
-        hm_gt = torch.Tensor([np.array([hma, hmb])])
+        hm_gt = torch.Tensor(np.expand_dims(np.array([hma, hmb]), 0))
         gt_outs = (hm_gt, match_vectors_gt, torch.Tensor([conf_mask_gt]).reshape(-1, s, s)), \
             ([torch.Tensor(matches_xy_gt)], [torch.Tensor(confs_gt)])
 
