@@ -190,11 +190,11 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
     gt_outs = (hm_gt, match_vectors_gt, torch.Tensor(np.expand_dims(conf_mask_gt, 0)).reshape(-1, s, s)), \
         ([torch.Tensor(matches_xy_gt)], [torch.Tensor(confs_gt)])
 
-    writer.add_figure('match_viz-gt', matplotlib_imshow(match_viz), global_step=g_idx)
-    writer.add_figure('heatmap-a-gt', matplotlib_imshow(heatmap_a), global_step=g_idx)
-    writer.add_figure('heatmap-b-gt', matplotlib_imshow(heatmap_b), global_step=g_idx)
-    writer.add_figure('match_vectors_viz-gt', matplotlib_imshow(match_vectors_viz), global_step=g_idx)
-    writer.add_figure('match_confidence', matplotlib_imshow(conf_mask_viz), global_step=g_idx)
+    writer.add_figure('match_viz-gt', matplotlib_imshow(match_viz_gt), global_step=g_idx)
+    writer.add_figure('heatmap-a-gt', matplotlib_imshow(heatmap_a_gt), global_step=g_idx)
+    writer.add_figure('heatmap-b-gt', matplotlib_imshow(heatmap_b_gt), global_step=g_idx)
+    writer.add_figure('match_vectors_viz-gt', matplotlib_imshow(match_vectors_gt_viz), global_step=g_idx)
+    writer.add_figure('match_confidence-gt', matplotlib_imshow(conf_mask_gt_viz), global_step=g_idx)
 
     with torch.no_grad():
         (example_loss, example_vector_loss, example_conf_loss, vector_loss_map), (tp, fp, fn) = loss_fn(inference_outs,
@@ -214,12 +214,12 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
     mn = os.sep.join([viz_dir, '_'.join([fn_prefix, '-vector-lossmap', suffix + '.jpg'])])
     cv2.imwrite(mn, vector_loss_viz)
 
-    writer.add_figure('match_viz', matplotlib_imshow(match_viz), global_step=g_idx)
-    writer.add_figure('heatmap-a', matplotlib_imshow(heatmap_a), global_step=g_idx)
-    writer.add_figure('heatmap-b', matplotlib_imshow(heatmap_b), global_step=g_idx)
-    writer.add_figure('match_vectors_viz', matplotlib_imshow(match_vectors_viz), global_step=g_idx)
-    writer.add_figure('match_confidence', matplotlib_imshow(conf_mask_viz), global_step=g_idx)
-    writer.add_figure('vector_loss_map', matplotlib_imshow(vector_loss_viz), global_step=g_idx)
+    writer.add_figure('match_viz-pred', matplotlib_imshow(match_viz), global_step=g_idx)
+    writer.add_figure('heatmap-a-pred', matplotlib_imshow(heatmap_a), global_step=g_idx)
+    writer.add_figure('heatmap-b-pred', matplotlib_imshow(heatmap_b), global_step=g_idx)
+    writer.add_figure('match_vectors_viz-pred', matplotlib_imshow(match_vectors_viz), global_step=g_idx)
+    writer.add_figure('match_confidence-pred', matplotlib_imshow(conf_mask_viz), global_step=g_idx)
+    writer.add_figure('vector_loss_map-pred', matplotlib_imshow(vector_loss_viz), global_step=g_idx)
 
     score_dict = score_model(nmatch, data_loader_val, loss_fn)
 
