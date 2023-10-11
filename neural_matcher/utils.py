@@ -223,13 +223,8 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
 
     score_dict = score_model(nmatch, data_loader_val, loss_fn)
 
-    writer.add_scalar('val_fscore', score_dict['fscore'], g_idx)
-    writer.add_scalar('val_loss', score_dict['val_loss'], g_idx)
-    writer.add_scalar('val_example_loss', example_loss, g_idx)
-    writer.add_scalar('val_example_vector_loss', example_vector_loss, g_idx)
-    writer.add_scalar('val_example_conf_loss', example_conf_loss, g_idx)
-    writer.add_scalar('val_precision', score_dict['precision'], g_idx)
-    writer.add_scalar('val_recall', score_dict['recall'], g_idx)
+    for k in score_dict.keys():
+        writer.add_scalar(k, score_dict[k], g_idx)
 
     if train_measures is not None:
         train_losses, grad_measures = train_measures

@@ -77,14 +77,13 @@ class KeypointLoss(nn.Module):
             conf_loss, (tp, fp, fn) = self.loss_compute(conf_masks_pred, conf_masks_gt, self.smooth, self.alpha,
                                                         self.gamma)
             loss = .9 * vector_loss + .1 * conf_loss
-        else:
-            loss_heatmap, (tp_, fp_, fn_) = self.loss_compute(hm_pred, hm_gt, self.smooth, self.alpha, self.gamma)
-            loss_matcher, (tp__, fp__, fn__) = self.loss_compute(match_vectors_pred, match_vectors_gt, self.smooth,
-                                                                 self.alpha, self.gamma)
-            loss = loss_heatmap + loss_matcher
-            tp = tp_ + tp__
-            fp = fp_ + fp__
-            fn = fn_ + fn__
+        elif self.train_module == 'all':
+            vector_diffs = match_vectors_gt - match_vectors_pred
+            vector_loss_map = torch.norm(vector_diffs, dim=1) ** 2
+            vector_loss = torch.mean(vector_loss_map)
+            conf_loss, (tp, fp, fn) = self.loss_compute(conf_masks_pred, conf_masks_gt, self.smooth, self.alpha,
+                                                        self.gamma)
+            loss = .5 * vector_loss + .5 * conf_loss
 
         return (loss, vector_loss, conf_loss, vector_loss_map), (tp, fp, fn)
 
