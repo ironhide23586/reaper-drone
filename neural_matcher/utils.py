@@ -83,7 +83,7 @@ def collater(data):
 
 def matplotlib_imshow(img):
     fig = plt.figure()
-    plt.imshow(img)
+    plt.imshow(img[:, :, [2, 1, 0]])
     return fig
 
 

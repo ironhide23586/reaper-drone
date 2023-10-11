@@ -80,7 +80,7 @@ class KeypointLoss(nn.Module):
         elif self.train_module == 'all':
             vector_diffs = match_vectors_gt - match_vectors_pred
             vector_loss_map = torch.norm(vector_diffs, dim=1)
-            vector_loss = torch.mean(vector_loss_map)
+            vector_loss = torch.mean(vector_loss_map) * 100.
             conf_loss, (tp, fp, fn) = self.loss_compute(conf_masks_pred, conf_masks_gt, self.smooth, self.alpha,
                                                         self.gamma)
             loss_heatmap, _ = self.loss_compute(hm_pred, hm_gt, self.smooth, self.alpha, self.gamma)
