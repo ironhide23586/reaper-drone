@@ -15,11 +15,11 @@ Website: https://www.linkedin.com/in/souham/
 RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/practical-puma-all.11-10-2023.15_14_44/model_files/neuramatch_practical-puma-all_35e-600b_0.31935256754091307_val-loss.pt'
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
 LEARN_RATE = 1e-4
-BATCH_SIZE = 8
+BATCH_SIZE = 9
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
-KSIZE = 5
+KSIZE = 7
 RADIUS_SCALE = .3
 BLEND_COEFF = .55
 TVERSKY_SMOOTH = 1.

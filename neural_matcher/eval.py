@@ -54,7 +54,7 @@ def viz_matches(a, b, inference_outs, blend_coeff=.65):
                             blended_viz_b, match_xy_pairs[:, 2:].detach().cpu().numpy(),
                             confs=confs)
     match_vectors_pred_viz = viz_match_vectors(match_vectors_pred[0])
-    conf_mask_viz = (conf_mask[0].detach().cpu().numpy() * 255).astype(np.uint8)
+    conf_mask_viz = viz_heatmap(conf_mask[0].detach().cpu().numpy())
 
     return img, hm_a, hm_b, match_vectors_pred_viz, conf_mask_viz
 
