@@ -13,7 +13,7 @@ Website: https://www.linkedin.com/in/souham/
 """
 
 RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/vegan-bustard-matcher.11-10-2023.11_38_00/model_files/neuramatch_vegan-bustard-matcher_9e-974b_0.08578242534285695_val-loss.pt'
-TRAIN_MODULE = 'matcher'  # 'heatmap' or 'matcher'
+TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
 LEARN_RATE = 1e-4
 BATCH_SIZE = 8
 NUM_EPOCHS = 100000
@@ -119,8 +119,8 @@ if __name__ == '__main__':
     val_df_dict = {'epoch': [],
                    'epoch_batch_iteration': []}
 
-    checkpoint_model(nmatch, None, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
-                     val_df_dict, viz_dir, writer, 0, KSIZE, RADIUS_SCALE, BLEND_COEFF)
+    # checkpoint_model(nmatch, None, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
+    #                  val_df_dict, viz_dir, writer, 0, KSIZE, RADIUS_SCALE, BLEND_COEFF)
     running_loss = 0.
     running_vector_loss = 0.
     running_conf_loss = 0.
