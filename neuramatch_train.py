@@ -193,9 +193,9 @@ if __name__ == '__main__':
                 checkpoint_model(nmatch, (prev_running_losses, prev_running_grad_measures), device, data_loader_val,
                                  ima, imb, model_dir, loss_fn, ei,
                                  bi, sess_id, log_fname, val_df_dict, viz_dir, writer,
-                                 ei * len(data_loader_train) + bi)
+                                 ei * len(data_loader_train) + bi, KSIZE, RADIUS_SCALE, BLEND_COEFF)
             nmatch.train()
         checkpoint_model(nmatch, (prev_running_losses, prev_running_grad_measures), device, data_loader_val,
                          ima, imb, model_dir, loss_fn, ei,
                          bi, sess_id, log_fname, val_df_dict, viz_dir, writer,
-                         ei * len(data_loader_train) + bi)
+                         ei * len(data_loader_train) + bi, KSIZE, RADIUS_SCALE, BLEND_COEFF)
