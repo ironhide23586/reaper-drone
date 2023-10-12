@@ -119,6 +119,10 @@ if __name__ == '__main__':
     val_df_dict = {'epoch': [],
                    'epoch_batch_iteration': []}
 
+    md = nmatch.state_dict()
+    for k in md.keys():
+        writer.add_histogram(k, md[k], 0)
+
     checkpoint_model(nmatch, None, device, data_loader_val, ima, imb, model_dir, loss_fn, ei, bi, sess_id, log_fname,
                      val_df_dict, viz_dir, writer, 0, KSIZE, RADIUS_SCALE, BLEND_COEFF)
     running_loss = 0.
@@ -163,7 +167,7 @@ if __name__ == '__main__':
 
             opt.step()
 
-            if bi % RUNNING_LOSS_WINDOW == 0:
+            if bi % RUNNING_LOSS_WINDOW == 0 and bi > 0:
                 den = max(den, 1.)
                 running_loss /= den
                 running_vector_loss /= den
@@ -196,6 +200,11 @@ if __name__ == '__main__':
                 running_g_std = 0.
                 running_g_max = 0.
                 running_g_min = 0.
+
+                md = nmatch.state_dict()
+                for k in md.keys():
+                    writer.add_histogram(k, md[k], ei * len(data_loader_train) + bi)
+
                 den = 0.
             if bi % SAVE_EVERY_N_BATCHES == 0 and bi > 0:
                 checkpoint_model(nmatch, (prev_running_losses, prev_running_grad_measures), device, data_loader_val,
