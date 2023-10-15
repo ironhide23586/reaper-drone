@@ -86,8 +86,8 @@ class KeypointLoss(nn.Module):
             vector_loss_map = torch.norm(vector_diffs, dim=1)
             residual_weight = (1. - self.vector_loss_weight) / 2.
 
-            vector_loss_h = torch.nan_to_num(torch.mean(vector_loss_map[vector_loss_map > .5]))
-            vector_loss_l = torch.nan_to_num(torch.mean(vector_loss_map[vector_loss_map <= .5]))
+            vector_loss_h = torch.nan_to_num(torch.mean(vector_loss_map[vector_loss_map > .1]))
+            vector_loss_l = torch.nan_to_num(torch.mean(vector_loss_map[vector_loss_map <= .1]))
             vector_loss = (.95 * vector_loss_h) + (.05 * vector_loss_l)
 
             # vector_loss = torch.mean(torch.sum(vector_loss_map.reshape(-1, utils.SIDE * utils.SIDE), dim=-1)) / 1000.
