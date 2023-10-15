@@ -12,7 +12,7 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/crafty-silkworm-all.11-10-2023.22_37_48/model_files/neuramatch_crafty-silkworm-all_78e-600b_0.3275825427390314_val-loss.pt'
+RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/shapeless-newt-all.15-10-2023.14_54_12/model_files/neuramatch_shapeless-newt-all_3e-600b_0.03718884306575142_val-loss.pt'
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
 LEARN_RATE = 1e-4
 BATCH_SIZE = 9
