@@ -15,6 +15,8 @@ Website: https://www.linkedin.com/in/souham/
 import torch
 from torch import nn
 
+import utils
+
 
 class KeypointLoss(nn.Module):
 
@@ -84,7 +86,7 @@ class KeypointLoss(nn.Module):
             vector_loss_map = torch.norm(vector_diffs, dim=1)
             residual_weight = (1. - self.vector_loss_weight) / 2.
 
-            vector_loss = torch.sum(vector_loss_map) / 100.
+            vector_loss = torch.mean(torch.sum(vector_loss_map.reshape(-1, utils.SIDE * utils.SIDE), dim=-1)) / 1000.
             # vector_loss = torch.mean(vector_loss_map) * 1000.
 
             conf_loss, (tp, fp, fn) = self.loss_compute(conf_masks_pred, conf_masks_gt, self.smooth, self.alpha,
