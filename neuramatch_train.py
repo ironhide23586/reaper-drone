@@ -12,17 +12,17 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/shapeless-newt-all.15-10-2023.14_54_12/model_files/neuramatch_shapeless-newt-all_3e-600b_0.03718884306575142_val-loss.pt'
+RESUME_MODEL_FPATH = None
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
 LEARN_RATE = 1e-4
 BATCH_SIZE = 9
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
-KSIZE = 1
+KSIZE = 23
 RADIUS_SCALE = .3
 BLEND_COEFF = .55
-VECTOR_LOSS_WEIGHT = .96
+VECTOR_LOSS_WEIGHT = .7
 TVERSKY_SMOOTH = 1.
 TVERSKY_ALPHA = .7
 TVERSKY_GAMMA = .75
