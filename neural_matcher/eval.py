@@ -25,9 +25,11 @@ import utils
 def viz_heatmap(heatmap):
     hm = np.tile(np.expand_dims(heatmap, -1), [1, 1, 3])
     lc = np.tile([[[0, 0, 255]]], [hm.shape[0], hm.shape[1], 1])
-    hc = np.tile([[[255, 140, 0]]], [hm.shape[0], hm.shape[1], 1])
+    hc = np.tile([[[255, 255, 255]]], [hm.shape[0], hm.shape[1], 1])
     hm_ = (hc * hm) + (lc * (1. - hm))
-    return (hm_ * 255).astype(np.uint8)
+    f = np.tile(np.expand_dims(heatmap == 0, -1), [1, 1, 3])
+    hm_[f] = 0.
+    return hm_.astype(np.uint8)
 
 
 def viz_match_vectors(match_vectors):

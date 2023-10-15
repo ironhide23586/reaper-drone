@@ -18,19 +18,21 @@ from torch import nn
 
 class KeypointLoss(nn.Module):
 
-    def __init__(self, train_module, device, smooth=1., alpha=.6, gamma=.75):
+    def __init__(self, train_module, device, smooth=1., alpha=.6, gamma=.75, vector_loss_weight=.96):
         super(KeypointLoss, self).__init__()
         self.device = device
         self.train_module = train_module
         self.smooth = smooth
         self.alpha = alpha
         self.gamma = gamma
+        self.vector_loss_weight = torch.scalar_tensor(vector_loss_weight).to(self.device)
 
     def loss_compute(self, y_pred, y_true, smooth, alpha, gamma):
         tp = torch.sum(y_true * y_pred)
         fp = torch.sum((1. - y_true) * y_pred)
         fn = torch.sum(y_true * (1. - y_pred))
-        l = (tp + smooth) / (tp + (alpha * fn) + ((1 - alpha) * fp + smooth))
+        l = (tp + smooth) / torch.max((tp + (alpha * fn) + ((1 - alpha) * fp + smooth)),
+                                      torch.scalar_tensor(1.).to(self.device))
         tversky_loss = 1. - l
         focal_tversky_loss = torch.float_power(tversky_loss, gamma)
         return focal_tversky_loss, (tp, fp, fn)
@@ -80,11 +82,17 @@ class KeypointLoss(nn.Module):
         elif self.train_module == 'all':
             vector_diffs = match_vectors_gt - match_vectors_pred
             vector_loss_map = torch.norm(vector_diffs, dim=1)
-            vector_loss = torch.mean(vector_loss_map) * 100.
+            residual_weight = (1. - self.vector_loss_weight) / 2.
+
+            vector_loss = torch.sum(vector_loss_map) / 15.
+            # vector_loss = torch.mean(vector_loss_map) * 1000.
+
             conf_loss, (tp, fp, fn) = self.loss_compute(conf_masks_pred, conf_masks_gt, self.smooth, self.alpha,
                                                         self.gamma)
             loss_heatmap, _ = self.loss_compute(hm_pred, hm_gt, self.smooth, self.alpha, self.gamma)
-            loss = .6 * vector_loss + .2 * conf_loss + .2 * loss_heatmap
+            loss = (self.vector_loss_weight * vector_loss) \
+                   + (residual_weight * conf_loss) \
+                   + (residual_weight * loss_heatmap)
 
         return (loss, vector_loss, conf_loss, vector_loss_map), (tp, fp, fn)
 

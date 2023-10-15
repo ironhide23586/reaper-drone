@@ -12,16 +12,17 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/practical-puma-all.11-10-2023.15_14_44/model_files/neuramatch_practical-puma-all_35e-600b_0.31935256754091307_val-loss.pt'
+RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/crafty-silkworm-all.11-10-2023.22_37_48/model_files/neuramatch_crafty-silkworm-all_78e-600b_0.3275825427390314_val-loss.pt'
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
 LEARN_RATE = 1e-4
 BATCH_SIZE = 9
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
-KSIZE = 7
+KSIZE = 1
 RADIUS_SCALE = .3
 BLEND_COEFF = .55
+VECTOR_LOSS_WEIGHT = .96
 TVERSKY_SMOOTH = 1.
 TVERSKY_ALPHA = .7
 TVERSKY_GAMMA = .75
@@ -50,6 +51,9 @@ from neural_matcher.utils import *
 
 
 if __name__ == '__main__':
+    if KSIZE == 1:
+        print('KSIZE is 1, setting RADIUS_SCALE to 0.; ONLY SINGLE PIXEL MATCHES WILL BE CONSIDERED!')
+        RADIUS_SCALE = 0.
     ima = Image.open('IMG_3806.HEIC')
     imb = Image.open('IMG_3807.HEIC')
 
@@ -80,7 +84,7 @@ if __name__ == '__main__':
     data_loader_val = DataLoader(ds_val, BATCH_SIZE, collate_fn=collater, num_workers=cpu_count())
 
     loss_fn = KeypointLoss(device=device, smooth=TVERSKY_SMOOTH, alpha=TVERSKY_ALPHA, gamma=TVERSKY_GAMMA,
-                           train_module=TRAIN_MODULE)
+                           train_module=TRAIN_MODULE, vector_loss_weight=VECTOR_LOSS_WEIGHT)
 
     train_config = {'start_learn_rate': LEARN_RATE,
                     'side': utils.SIDE,
@@ -91,6 +95,7 @@ if __name__ == '__main__':
                     'blend_coeff': BLEND_COEFF,
                     'ksize': KSIZE,
                     'running_train_loss_window': RUNNING_LOSS_WINDOW,
+                    'vector_loss_weight': VECTOR_LOSS_WEIGHT,
                     'radius_scale': RADIUS_SCALE,
                     'tversky_smooth': TVERSKY_SMOOTH,
                     'tversky_alpha': TVERSKY_ALPHA,

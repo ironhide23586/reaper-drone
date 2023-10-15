@@ -63,11 +63,12 @@ def makeGaussian(size, fwhm_scale=.7, center=None):
 def create_heatmap(pxy_, s, ksize=23, radius_scale=.6, blend_coeff=.55):
   pxy = np.clip(np.round(pxy_), 0, s - 1).astype(int)
   m = np.zeros(s * s, dtype=float)
-  kernel = makeGaussian(ksize, fwhm_scale=radius_scale)
-  offset = ksize // 2
-  for i in range(-offset, offset):
-    for j in range(-offset, offset):
-      draw_points(m, pxy + [i, j], kernel[i + offset, j + offset], s, blend_coeff)
+  if ksize > 1:
+    kernel = makeGaussian(ksize, fwhm_scale=radius_scale)
+    offset = ksize // 2
+    for i in range(-offset, offset):
+      for j in range(-offset, offset):
+        draw_points(m, pxy + [i, j], kernel[i + offset, j + offset], s, blend_coeff)
   pxy_1d = pxy[:, 0] + pxy[:, 1] * s
   m[pxy_1d] = 1.
   m = m.reshape([s, s])
