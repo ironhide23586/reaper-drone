@@ -20,7 +20,8 @@ import utils
 
 class KeypointLoss(nn.Module):
 
-    def __init__(self, train_module, device, smooth=1., alpha=.6, gamma=.75, vector_loss_weight=.96):
+    def __init__(self, train_module, device, smooth=1., alpha=.6, gamma=.75, vector_loss_weight=.96,
+                 vector_loss_h_weight=.5):
         super(KeypointLoss, self).__init__()
         self.device = device
         self.train_module = train_module
@@ -28,6 +29,7 @@ class KeypointLoss(nn.Module):
         self.alpha = alpha
         self.gamma = gamma
         self.vector_loss_weight = torch.scalar_tensor(vector_loss_weight).to(self.device)
+        self.vector_loss_h_weight = torch.scalar_tensor(vector_loss_h_weight).to(self.device)
 
     def loss_compute(self, y_pred, y_true, smooth, alpha, gamma):
         tp = torch.sum(y_true * y_pred)
@@ -88,7 +90,8 @@ class KeypointLoss(nn.Module):
 
             vector_loss_h = torch.nan_to_num(torch.mean(vector_loss_map[vector_loss_map > .1]))
             vector_loss_l = torch.nan_to_num(torch.mean(vector_loss_map[vector_loss_map <= .1]))
-            vector_loss = (.95 * vector_loss_h) + (.05 * vector_loss_l)
+            vector_loss = ((self.vector_loss_h_weight * vector_loss_h)
+                           + ((1. - self.vector_loss_h_weight) * vector_loss_l))
 
             # vector_loss = torch.mean(torch.sum(vector_loss_map.reshape(-1, utils.SIDE * utils.SIDE), dim=-1)) / 1000.
             # vector_loss = torch.mean(vector_loss_map) * 1000.

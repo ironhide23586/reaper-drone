@@ -12,21 +12,23 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = None
+RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/tungsten-petrel-all.16-10-2023.00_01_16/model_files/neuramatch_tungsten-petrel-all_37e-866b_0.31897112738564887_val-loss.pt'
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
 LEARN_RATE = 1e-4
 BATCH_SIZE = 9
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
-KSIZE = 23
+KSIZE = 9
 RADIUS_SCALE = .3
 BLEND_COEFF = .55
 VECTOR_LOSS_WEIGHT = .7
+VECTOR_LOSS_H_WEIGHT = .5
 TVERSKY_SMOOTH = 1.
 TVERSKY_ALPHA = .7
 TVERSKY_GAMMA = .75
 RUNNING_LOSS_WINDOW = 50
+
 
 
 from datetime import datetime
@@ -84,7 +86,8 @@ if __name__ == '__main__':
     data_loader_val = DataLoader(ds_val, BATCH_SIZE, collate_fn=collater, num_workers=cpu_count())
 
     loss_fn = KeypointLoss(device=device, smooth=TVERSKY_SMOOTH, alpha=TVERSKY_ALPHA, gamma=TVERSKY_GAMMA,
-                           train_module=TRAIN_MODULE, vector_loss_weight=VECTOR_LOSS_WEIGHT)
+                           train_module=TRAIN_MODULE, vector_loss_weight=VECTOR_LOSS_WEIGHT,
+                           vector_loss_h_weight=VECTOR_LOSS_H_WEIGHT)
 
     train_config = {'start_learn_rate': LEARN_RATE,
                     'side': utils.SIDE,
@@ -96,6 +99,7 @@ if __name__ == '__main__':
                     'ksize': KSIZE,
                     'running_train_loss_window': RUNNING_LOSS_WINDOW,
                     'vector_loss_weight': VECTOR_LOSS_WEIGHT,
+                    'vector_loss_h_weight': VECTOR_LOSS_H_WEIGHT,
                     'radius_scale': RADIUS_SCALE,
                     'tversky_smooth': TVERSKY_SMOOTH,
                     'tversky_alpha': TVERSKY_ALPHA,
