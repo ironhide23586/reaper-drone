@@ -12,21 +12,21 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/tungsten-petrel-all.16-10-2023.00_01_16/model_files/neuramatch_tungsten-petrel-all_37e-866b_0.31897112738564887_val-loss.pt'
+RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/juicy-bull-all.25-10-2023.14_23_46/model_files/neuramatch_juicy-bull-all_19e-866b_0.10082299951909875_val-loss.pt'
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
-LEARN_RATE = 1e-4
+LEARN_RATE = 9e-5
 BATCH_SIZE = 9
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
-KSIZE = 9
+KSIZE = 1
 RADIUS_SCALE = .3
 BLEND_COEFF = .55
-VECTOR_LOSS_WEIGHT = .98
-VECTOR_LOSS_H_WEIGHT = .5
+VECTOR_LOSS_WEIGHT = .99
+VECTOR_LOSS_H_WEIGHT = .95
 TVERSKY_SMOOTH = 1.
 TVERSKY_ALPHA = .7
-TVERSKY_GAMMA = .75
+TVERSKY_GAMMA = 1.2
 RUNNING_LOSS_WINDOW = 50
 
 
