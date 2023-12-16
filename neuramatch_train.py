@@ -12,11 +12,12 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = 'scratchspace/trained_models/ambrosial-skink-matcher.05-10-2023.17_37_47/model_files/neuramatch-ambrosial-skink-matcher_4e-974b_0.4935259740624083-fsc.pt'
-TRAIN_MODULE = 'matcher'  # 'heatmap' or 'matcher'
+# RESUME_MODEL_FPATH = 'scratchspace/trained_models/ambrosial-skink-matcher.05-10-2023.17_37_47/model_files/neuramatch-ambrosial-skink-matcher_4e-974b_0.4935259740624083-fsc.pt'
+RESUME_MODEL_FPATH = None
+TRAIN_MODULE = 'all'  # 'all' or 'heatmap' or 'matcher'
 LEARN_RATE = 2e-4
 SIDE = 480
-BATCH_SIZE = 8
+BATCH_SIZE = 4
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
