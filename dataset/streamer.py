@@ -15,6 +15,7 @@ Website: https://www.linkedin.com/in/souham/
 from glob import glob
 import pickle
 
+import cv2
 import numpy as np
 
 from torch.utils.data import Dataset
@@ -48,6 +49,14 @@ class ImagePairDataset(Dataset):
         with open(self.fpaths[i], 'rb') as f:
             payload = pickle.load(f)
         im_ab, matches_xy, metadata = payload
+
+        _, _, _, im_s = im_ab.shape
+        matches_xy = np.clip(matches_xy / im_s, 0, 1.) * (utils.SIDE - 1)
+        im_ab_ = []
+        for i in range(im_ab.shape[0]):
+            im_ = cv2.resize(np.rollaxis(im_ab[i], 0, 3), (utils.SIDE, utils.SIDE))
+            im_ab_.append(np.rollaxis(im_, 2, 0))
+        im_ab = np.array(im_ab_)
 
         k = utils.create_heatmap(matches_xy[:, :2], im_ab.shape[-1], ksize=self.ksize, radius_scale=self.radius_scale,
                                  blend_coeff=self.blend_coeff)

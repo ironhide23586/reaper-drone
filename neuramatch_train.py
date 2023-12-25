@@ -125,7 +125,7 @@ if __name__ == '__main__':
         print('Loaded!')
     else:
         print('Training from scratch...')
-    opt = torch.optim.Adam(nmatch.parameters(), lr=LEARN_RATE)
+    opt = torch.optim.Adam(nmatch.model_params, lr=LEARN_RATE)
 
     bi = 0
     ei = 0
@@ -160,13 +160,14 @@ if __name__ == '__main__':
             running_vector_loss += vector_loss.item()
             running_conf_loss += conf_loss.item()
 
+            nmatch.clip_model.zero_grad()
             # if TRAIN_MODULE == 'matcher':
             #     nmatch.conv0_block_a.zero_grad()
             #     nmatch.conv0_block_b.zero_grad()
             #     nmatch.conv0_block_ab.zero_grad()
             #     nmatch.heatmap_condenser.zero_grad()
 
-            p = list(nmatch.parameters())
+            p = nmatch.model_params
             grad_extract = lambda fn: torch.mean(torch.stack([fn(t.grad) for t in p if t.grad is not None])).item()
             g_mean = grad_extract(torch.mean)
             g_std = grad_extract(torch.std)
@@ -198,6 +199,9 @@ if __name__ == '__main__':
                 print('Conf Loss:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', running_conf_loss)
                 print('Grad Mean:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', g_mean)
                 print('Grad Std:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', g_std)
+
+                # TODO: NAN IN GRAD STD
+
                 print('Grad Max:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', g_max)
                 print('Grad Min:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', g_min)
                 writer.add_scalar('train_loss', running_loss, ei * len(data_loader_train) + bi)

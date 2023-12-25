@@ -38,13 +38,6 @@ class NeuraMatch(nn.Module):
         self.heatmap_thresh = nn.Parameter(torch.tensor(.5), requires_grad=False)
         self.final_thresh = nn.Parameter(torch.tensor(.5), requires_grad=False)
 
-        self.matcher = nn.Sequential(nn.Linear(64, 32, bias=True),
-                                     nn.LeakyReLU(),
-                                     nn.Linear(32, 16, bias=True),
-                                     nn.LeakyReLU(),
-                                     nn.Linear(16, 1, bias=True),
-                                     nn.Sigmoid())
-
         self.clip_condenser = nn.Sequential(nn.ConvTranspose2d(1, 8, (5, 1),
                                                                (2, 1), bias=False),
                                             nn.BatchNorm2d(8), nn.LeakyReLU(),
@@ -77,7 +70,8 @@ class NeuraMatch(nn.Module):
                                             nn.ConvTranspose2d(8, 1, (4, 1),
                                                                (1, 1), bias=False),
                                             nn.BatchNorm2d(1), nn.LeakyReLU())
-
+        self.model_params = list(self.clip_condenser.parameters()) + list(self.heatmap_decoder.parameters()) \
+                             + list(self.vector_decoder.parameters())
         self.to(self.device)
 
     def forward(self, x_):
