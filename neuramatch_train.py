@@ -13,9 +13,9 @@ Website: https://www.linkedin.com/in/souham/
 """
 
 # RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/juicy-bull-all.25-10-2023.14_23_46/model_files/neuramatch_juicy-bull-all_19e-866b_0.10082299951909875_val-loss.pt'
-RESUME_MODEL_FPATH = 'scratchspace/trained_models_2/towering-mongrel-all.25-12-2023.14_03_16/model_files/neuramatch_towering-mongrel-all_4e-1559b_0.36063403000453487_val-loss.pt'
+# RESUME_MODEL_FPATH = 'scratchspace/trained_models_2/towering-mongrel-all.25-12-2023.14_03_16/model_files/neuramatch_towering-mongrel-all_4e-1559b_0.36063403000453487_val-loss.pt'
 # RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/sapphire-quokka-all.16-12-2023.16_13_00/model_files/neuramatch_sapphire-quokka-all_96e-1559b_0.01953604960083082_val-loss.pt'
-
+RESUME_MODEL_FPATH = None
 
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
 LEARN_RATE = 9e-5
@@ -30,7 +30,7 @@ VECTOR_LOSS_WEIGHT = .9
 VECTOR_LOSS_H_WEIGHT = .1
 TVERSKY_SMOOTH = 1.
 TVERSKY_ALPHA = .6
-TVERSKY_GAMMA = .45
+TVERSKY_GAMMA = .75
 RUNNING_LOSS_WINDOW = 50
 
 
@@ -160,11 +160,11 @@ if __name__ == '__main__':
             running_vector_loss += vector_loss.item()
             running_conf_loss += conf_loss.item()
 
-            if TRAIN_MODULE == 'matcher':
-                nmatch.conv0_block_a.zero_grad()
-                nmatch.conv0_block_b.zero_grad()
-                nmatch.conv0_block_ab.zero_grad()
-                nmatch.heatmap_condenser.zero_grad()
+            # if TRAIN_MODULE == 'matcher':
+            #     nmatch.conv0_block_a.zero_grad()
+            #     nmatch.conv0_block_b.zero_grad()
+            #     nmatch.conv0_block_ab.zero_grad()
+            #     nmatch.heatmap_condenser.zero_grad()
 
             p = list(nmatch.parameters())
             grad_extract = lambda fn: torch.mean(torch.stack([fn(t.grad) for t in p if t.grad is not None])).item()

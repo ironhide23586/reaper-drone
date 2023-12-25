@@ -19,13 +19,19 @@ import numpy as np
 import cv2
 from torchvision import transforms
 
-SIDE = 480
-IM_MEANS = [0.485, 0.456, 0.406]
-IM_STDS = [0.229, 0.224, 0.225]
+# SIDE = 480
+# IM_MEANS = [0.485, 0.456, 0.406]
+# IM_STDS = [0.229, 0.224, 0.225]
+
+SIDE = 224
+IM_MEANS = [0.48145466, 0.4578275, 0.40821073]
+IM_STDS = [0.26862954, 0.26130258, 0.27577711]
 
 TENSOR_TRANSFORM = transforms.ToTensor()
 INPUT_TRANSFORMS = transforms.Normalize(mean=IM_MEANS, std=IM_STDS)
-DATASET_DIR = 'scratchspace/datasets'
+
+CACHE_DIR = 'scratchspace'
+DATASET_DIR = CACHE_DIR + '/datasets'
 OPENAI_API_KEY = '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'
 
 HAND_CURATED_DATASET_DIR = DATASET_DIR + os.sep + 'hand_curated'
