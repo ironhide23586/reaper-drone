@@ -30,6 +30,7 @@ class ImagePairDataset(Dataset):
         self.ksize = ksize
         self.radius_scale = radius_scale
         self.data_dir = data_dir
+        self.mode = mode
         dirs = glob(data_dir + '/*_' + mode)
         self.fpaths = np.hstack([glob(d + '/*') for d in dirs])
         self.sz = self.fpaths.shape[0]
@@ -41,7 +42,7 @@ class ImagePairDataset(Dataset):
 
     def __getitem__(self, idx):
         i = self.ni[idx]
-        if idx == self.sz - 1:
+        if idx == self.sz - 1 and self.mode == 'train':
             np.random.shuffle(self.ni)
             print('Epoch finished, shuffled indices....')
         with open(self.fpaths[i], 'rb') as f:

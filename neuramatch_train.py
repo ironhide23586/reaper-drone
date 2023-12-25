@@ -12,23 +12,26 @@ Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
 
-RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/juicy-bull-all.25-10-2023.14_23_46/model_files/neuramatch_juicy-bull-all_19e-866b_0.10082299951909875_val-loss.pt'
+# RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/juicy-bull-all.25-10-2023.14_23_46/model_files/neuramatch_juicy-bull-all_19e-866b_0.10082299951909875_val-loss.pt'
+RESUME_MODEL_FPATH = 'scratchspace/trained_models_2/towering-mongrel-all.25-12-2023.14_03_16/model_files/neuramatch_towering-mongrel-all_4e-1559b_0.36063403000453487_val-loss.pt'
+# RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/sapphire-quokka-all.16-12-2023.16_13_00/model_files/neuramatch_sapphire-quokka-all_96e-1559b_0.01953604960083082_val-loss.pt'
+
+
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
 LEARN_RATE = 9e-5
-BATCH_SIZE = 9
+BATCH_SIZE = 5
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
 KSIZE = 5
 RADIUS_SCALE = .3
 BLEND_COEFF = .55
-VECTOR_LOSS_WEIGHT = .99
+VECTOR_LOSS_WEIGHT = .9
 VECTOR_LOSS_H_WEIGHT = .1
 TVERSKY_SMOOTH = 1.
-TVERSKY_ALPHA = .9
-TVERSKY_GAMMA = .75
+TVERSKY_ALPHA = .6
+TVERSKY_GAMMA = .45
 RUNNING_LOSS_WINDOW = 50
-
 
 
 from datetime import datetime
@@ -44,6 +47,8 @@ from tqdm import tqdm
 from coolname import generate_slug
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
 import cv2
 
 from neural_matcher.nn import NeuraMatch
@@ -66,7 +71,7 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print('Using device', device)
 
-    root_dir = 'scratchspace/trained_models_0'
+    root_dir = 'scratchspace/trained_models_2'
     out_dir = root_dir + '/' + sess_id + '.' + curr_time.strftime("%d-%m-%Y.%H_%M_%S")
     model_dir = out_dir + '/model_files'
     log_fname = out_dir + '/' + sess_id + '.' + 'log.csv'
@@ -216,7 +221,8 @@ if __name__ == '__main__':
 
                 den = 0.
             if bi % SAVE_EVERY_N_BATCHES == 0 and bi > 0:
-                checkpoint_model(nmatch, (prev_running_losses, prev_running_grad_measures), device, data_loader_val,
+                checkpoint_model(nmatch, (prev_running_losses, prev_running_grad_measures), device,
+                                 data_loader_val,
                                  ima, imb, model_dir, loss_fn, ei,
                                  bi, sess_id, log_fname, val_df_dict, viz_dir, writer,
                                  ei * len(data_loader_train) + bi, KSIZE, RADIUS_SCALE, BLEND_COEFF)
@@ -225,3 +231,4 @@ if __name__ == '__main__':
                          ima, imb, model_dir, loss_fn, ei,
                          bi, sess_id, log_fname, val_df_dict, viz_dir, writer,
                          ei * len(data_loader_train) + bi, KSIZE, RADIUS_SCALE, BLEND_COEFF)
+

@@ -98,8 +98,10 @@ class KeypointLoss(nn.Module):
 
             conf_loss, (tp, fp, fn) = self.loss_compute(conf_masks_pred, conf_masks_gt, self.smooth, self.alpha,
                                                         self.gamma)
-            # loss_heatmap, _ = self.loss_compute(hm_pred, hm_gt, self.smooth, self.alpha, self.gamma)
-            loss = (self.vector_loss_weight * vector_loss) + (residual_weight * conf_loss)
+            loss_heatmap, _ = self.loss_compute(hm_pred, hm_gt, self.smooth, self.alpha, self.gamma)
+            # loss = (self.vector_loss_weight * vector_loss) + (residual_weight * conf_loss)
+
+            loss_hm = (.05 * conf_loss + .95 * loss_heatmap)
+            loss = (self.vector_loss_weight * vector_loss) + (residual_weight * loss_hm)
 
         return (loss, vector_loss, conf_loss, vector_loss_map), (tp, fp, fn)
-
