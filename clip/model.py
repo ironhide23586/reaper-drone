@@ -224,7 +224,8 @@ class VisionTransformer(nn.Module):
         x = self.conv1(x)  # shape = [*, width, grid, grid]
         x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
         x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
-        x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
+        x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1],
+                                                                      dtype=x.dtype, device=x.device), x], dim=1)  # shape = [*, grid ** 2 + 1, width]
         x = x + self.positional_embedding.to(x.dtype)
         x = self.ln_pre(x)
 
@@ -232,13 +233,18 @@ class VisionTransformer(nn.Module):
         x = self.transformer(x)
         x = x.permute(1, 0, 2)  # LND -> NLD
 
+        x_ = x[:, 1:]
+
+        x_ = x_.permute(0, 2, 1)
+        x_ = x_.reshape(x_.shape[0], x_.shape[1], 7, 7)
+
         # x = self.ln_post(x[:, 0, :])
         #
         # if self.proj is not None:
         #     x = x @ self.proj
-        x = torch.unsqueeze(x, 1)
+        # x = torch.unsqueeze(x, 1)
 
-        return x
+        return x_
 
 
 class CLIP(nn.Module):
@@ -432,6 +438,6 @@ def build_model(state_dict: dict):
         if key in state_dict:
             del state_dict[key]
 
-    convert_weights(model)
+    # convert_weights(model)
     model.load_state_dict(state_dict)
     return model.eval()

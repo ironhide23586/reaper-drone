@@ -26,6 +26,9 @@ def viz_heatmap(heatmap):
     hm = np.tile(np.expand_dims(heatmap, -1), [1, 1, 3])
     lc = np.tile([[[0, 0, 255]]], [hm.shape[0], hm.shape[1], 1])
     hc = np.tile([[[255, 255, 255]]], [hm.shape[0], hm.shape[1], 1])
+    heatmap_max = heatmap.max()
+    if heatmap_max < .5 and heatmap_max > 0.:
+        hm = hm / heatmap_max
     hm_ = (hc * hm) + (lc * (1. - hm))
     f = np.tile(np.expand_dims(heatmap == 0, -1), [1, 1, 3])
     hm_[f] = 0.

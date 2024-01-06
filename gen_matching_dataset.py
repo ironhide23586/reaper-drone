@@ -32,13 +32,13 @@ import openai
 from dataset.retriever import HandCurated
 
 
-MODE = 'val'
+MODE = 'train'
 DATASET_DIR = utils.DOWNLOADED_DATASET_DIR
-TOPIC = 'fpv drone indoor flying footage inside different types of buildings ranginge from skyscrapers to homes to offices'
+TOPIC = 'home tour indoor fpv scenic'
 
 MAX_VIDEO_DURATION_IN_MINUTES = 10
-MAX_SEARCH_VIDEOS = 5
-NUM_GEN_PAIRS = 150
+MAX_SEARCH_VIDEOS = 50
+NUM_GEN_PAIRS = 300
 SEARCH_LISTS_DIR = 'scratchspace/youtube_video_search_lists'
 
 

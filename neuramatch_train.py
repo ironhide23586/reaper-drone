@@ -11,27 +11,29 @@
 Author: Souham Biswas
 Website: https://www.linkedin.com/in/souham/
 """
+import utils
 
 # RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/juicy-bull-all.25-10-2023.14_23_46/model_files/neuramatch_juicy-bull-all_19e-866b_0.10082299951909875_val-loss.pt'
 # RESUME_MODEL_FPATH = 'scratchspace/trained_models_2/towering-mongrel-all.25-12-2023.14_03_16/model_files/neuramatch_towering-mongrel-all_4e-1559b_0.36063403000453487_val-loss.pt'
 # RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/sapphire-quokka-all.16-12-2023.16_13_00/model_files/neuramatch_sapphire-quokka-all_96e-1559b_0.01953604960083082_val-loss.pt'
 RESUME_MODEL_FPATH = None
 
+ROOT_DIR = 'scratchspace/trained_models'
+
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
-LEARN_RATE = 9e-5
-BATCH_SIZE = 5
+LEARN_RATE = 1e-4
+BATCH_SIZE = 32
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
 KSIZE = 5
 RADIUS_SCALE = .3
-BLEND_COEFF = .55
-VECTOR_LOSS_WEIGHT = .9
+VECTOR_LOSS_WEIGHT = .7
 VECTOR_LOSS_H_WEIGHT = .1
 TVERSKY_SMOOTH = 1.
-TVERSKY_ALPHA = .6
+TVERSKY_ALPHA = .7
 TVERSKY_GAMMA = .75
-RUNNING_LOSS_WINDOW = 50
+RUNNING_LOSS_WINDOW = 80
 
 
 from datetime import datetime
@@ -49,7 +51,6 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
-import cv2
 
 from neural_matcher.nn import NeuraMatch
 from dataset.streamer import ImagePairDataset
@@ -71,7 +72,7 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print('Using device', device)
 
-    root_dir = 'scratchspace/trained_models_2'
+    root_dir = ROOT_DIR
     out_dir = root_dir + '/' + sess_id + '.' + curr_time.strftime("%d-%m-%Y.%H_%M_%S")
     model_dir = out_dir + '/model_files'
     log_fname = out_dir + '/' + sess_id + '.' + 'log.csv'
@@ -125,7 +126,7 @@ if __name__ == '__main__':
         print('Loaded!')
     else:
         print('Training from scratch...')
-    opt = torch.optim.Adam(nmatch.model_params, lr=LEARN_RATE)
+    opt = torch.optim.Adam(nmatch.model_params, lr=LEARN_RATE, weight_decay=1e-5)
 
     bi = 0
     ei = 0
@@ -160,7 +161,7 @@ if __name__ == '__main__':
             running_vector_loss += vector_loss.item()
             running_conf_loss += conf_loss.item()
 
-            nmatch.clip_model.zero_grad()
+            # nmatch.clip_model.zero_grad()
             # if TRAIN_MODULE == 'matcher':
             #     nmatch.conv0_block_a.zero_grad()
             #     nmatch.conv0_block_b.zero_grad()
@@ -170,7 +171,7 @@ if __name__ == '__main__':
             p = nmatch.model_params
             grad_extract = lambda fn: torch.mean(torch.stack([fn(t.grad) for t in p if t.grad is not None])).item()
             g_mean = grad_extract(torch.mean)
-            g_std = grad_extract(torch.std)
+            g_std = torch.stack([torch.std(t.grad) for t in p if t.grad is not None if t.shape[0] > 1]).mean().item()
             g_max = grad_extract(torch.max)
             g_min = grad_extract(torch.min)
 
@@ -199,9 +200,6 @@ if __name__ == '__main__':
                 print('Conf Loss:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', running_conf_loss)
                 print('Grad Mean:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', g_mean)
                 print('Grad Std:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', g_std)
-
-                # TODO: NAN IN GRAD STD
-
                 print('Grad Max:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', g_max)
                 print('Grad Min:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', g_min)
                 writer.add_scalar('train_loss', running_loss, ei * len(data_loader_train) + bi)
@@ -231,6 +229,17 @@ if __name__ == '__main__':
                                  bi, sess_id, log_fname, val_df_dict, viz_dir, writer,
                                  ei * len(data_loader_train) + bi, KSIZE, RADIUS_SCALE, BLEND_COEFF)
             nmatch.train()
+        if bi < RUNNING_LOSS_WINDOW:
+            den = max(den, 1.)
+            running_loss /= den
+            running_vector_loss /= den
+            running_conf_loss /= den
+            running_g_mean /= den
+            running_g_std /= den
+            running_g_max /= den
+            running_g_min /= den
+            prev_running_losses = [running_loss, running_vector_loss, running_conf_loss]
+            prev_running_grad_measures = [running_g_mean, running_g_std, running_g_max, running_g_min]
         checkpoint_model(nmatch, (prev_running_losses, prev_running_grad_measures), device, data_loader_val,
                          ima, imb, model_dir, loss_fn, ei,
                          bi, sess_id, log_fname, val_df_dict, viz_dir, writer,

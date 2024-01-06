@@ -23,7 +23,7 @@ from torchvision import transforms
 # IM_MEANS = [0.485, 0.456, 0.406]
 # IM_STDS = [0.229, 0.224, 0.225]
 
-SIDE = 224
+SIDE = 480
 IM_MEANS = [0.48145466, 0.4578275, 0.40821073]
 IM_STDS = [0.26862954, 0.26130258, 0.27577711]
 
@@ -32,7 +32,7 @@ INPUT_TRANSFORMS = transforms.Normalize(mean=IM_MEANS, std=IM_STDS)
 
 CACHE_DIR = 'scratchspace'
 DATASET_DIR = CACHE_DIR + '/datasets'
-OPENAI_API_KEY = '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'
+OPENAI_API_KEY = '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'
 
 HAND_CURATED_DATASET_DIR = DATASET_DIR + os.sep + 'hand_curated'
 
@@ -62,7 +62,7 @@ def makeGaussian(size, fwhm_scale=.7, center=None):
     x0 = center[0]
     y0 = center[1]
   k = np.exp(-4 * np.log(2) * ((x - x0) ** 2 + (y - y0) ** 2) / fwhm ** 2)
-  k[y0, x0] = 1.
+  # k[y0, x0] = 1.
   return k
 
 
@@ -76,6 +76,8 @@ def create_heatmap(pxy_, s, ksize=23, radius_scale=.6, blend_coeff=.55):
       for j in range(-offset, offset):
         draw_points(m, pxy + [i, j], kernel[i + offset, j + offset], s, blend_coeff)
   pxy_1d = pxy[:, 0] + pxy[:, 1] * s
+  # if m[m==1].shape[0] > 0:
+  #   l = 0
   m[pxy_1d] = 1.
   m = m.reshape([s, s])
   return m
