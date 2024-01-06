@@ -17,10 +17,22 @@ import os
 
 import numpy as np
 import cv2
+from torchvision import transforms
 
+# SIDE = 480
+# IM_MEANS = [0.485, 0.456, 0.406]
+# IM_STDS = [0.229, 0.224, 0.225]
 
-DATASET_DIR = 'scratchspace/datasets'
-OPENAI_API_KEY = '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'
+SIDE = 480
+IM_MEANS = [0.48145466, 0.4578275, 0.40821073]
+IM_STDS = [0.26862954, 0.26130258, 0.27577711]
+
+TENSOR_TRANSFORM = transforms.ToTensor()
+INPUT_TRANSFORMS = transforms.Normalize(mean=IM_MEANS, std=IM_STDS)
+
+CACHE_DIR = 'scratchspace'
+DATASET_DIR = CACHE_DIR + '/datasets'
+OPENAI_API_KEY = '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'
 
 HAND_CURATED_DATASET_DIR = DATASET_DIR + os.sep + 'hand_curated'
 
@@ -50,17 +62,23 @@ def makeGaussian(size, fwhm_scale=.7, center=None):
     x0 = center[0]
     y0 = center[1]
   k = np.exp(-4 * np.log(2) * ((x - x0) ** 2 + (y - y0) ** 2) / fwhm ** 2)
-  k[y0, x0] = 1.
+  # k[y0, x0] = 1.
   return k
 
 
-def create_heatmap(pxy, s, ksize=23, radius_scale=.6, blend_coeff=.55):
+def create_heatmap(pxy_, s, ksize=23, radius_scale=.6, blend_coeff=.55):
+  pxy = np.clip(np.round(pxy_), 0, s - 1).astype(int)
   m = np.zeros(s * s, dtype=float)
-  kernel = makeGaussian(ksize, fwhm_scale=radius_scale)
-  offset = ksize // 2
-  for i in range(-offset, offset):
-    for j in range(-offset, offset):
-      draw_points(m, pxy + [i, j], kernel[i + offset, j + offset], s, blend_coeff)
+  if ksize > 1:
+    kernel = makeGaussian(ksize, fwhm_scale=radius_scale)
+    offset = ksize // 2
+    for i in range(-offset, offset):
+      for j in range(-offset, offset):
+        draw_points(m, pxy + [i, j], kernel[i + offset, j + offset], s, blend_coeff)
+  pxy_1d = pxy[:, 0] + pxy[:, 1] * s
+  # if m[m==1].shape[0] > 0:
+  #   l = 0
+  m[pxy_1d] = 1.
   m = m.reshape([s, s])
   return m
 
@@ -83,7 +101,7 @@ def rotate_image(image, angle, remove_black_patches=True):
   return result
 
 
-def drawMatches(img1, kp1, img2, kp2):
+def drawMatches(img1, kp1, img2, kp2, confs=None):
   rows1 = img1.shape[0]
   cols1 = img1.shape[1]
   rows2 = img2.shape[0]
@@ -92,13 +110,19 @@ def drawMatches(img1, kp1, img2, kp2):
   out[:rows1, :cols1] = img1
   out[:rows2, cols1:cols1 + cols2] = img2
   colors = (np.random.uniform(size=(kp1.shape[0], 3)) * 255).astype(np.uint8)
+  if confs is None:
+    confs = np.ones([1, kp1.shape[0]])
   for mi in range(kp1.shape[0]):
     (x1, y1) = kp1[mi]
     (x2, y2) = kp2[mi]
     # cv2.circle(out, (int(x1), int(y1)), 4, colors[mi], 1)
     # cv2.circle(out, (int(x2) + cols1, int(y2)), 4, colors[mi], 1)
-    cv2.line(out, (int(x1), int(y1)), (int(x2) + cols1, int(y2)), (int(colors[mi][0]),
-                                                                   int(colors[mi][1]), int(colors[mi][2])), 1)
+
+    # cv2.line(out, (int(x1), int(y1)), (int(x2) + cols1, int(y2)), (255, 0, 0), 1)
+
+    cv2.line(out, (int(x1), int(y1)), (int(x2) + cols1, int(y2)), (int(colors[mi][0] * confs[0][mi]),
+                                                                   int(colors[mi][1] * confs[0][mi]),
+                                                                   int(colors[mi][2] * confs[0][mi])), 1)
   return out
 
 
