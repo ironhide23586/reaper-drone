@@ -38,8 +38,8 @@ class NeuraMatch(nn.Module):
         grid_xy = torch.concat([grid_x, grid_y], dim=1)
         self.p_xy = grid_xy.reshape(-1, 2, self.side * self.side)
 
-        self.heatmap_thresh = nn.Parameter(torch.tensor(.5), requires_grad=False)
-        self.final_thresh = nn.Parameter(torch.tensor(.5), requires_grad=False)
+        self.heatmap_thresh = 1.1
+        # self.final_thresh = nn.Parameter(torch.tensor(.5), requires_grad=False)
 
         self.clip_condenser = nn.Sequential(nn.ConvTranspose2d(768 * 2, 512,
                                                                (5, 5), (1, 1), bias=False),

@@ -18,7 +18,7 @@ import utils
 
 # RESUME_MODEL_FPATH = None
 # RESUME_MODEL_FPATH = 'scratchspace/trained_models/amiable-otter-all.07-01-2024.10_27_08/model_files/neuramatch_amiable-otter-all_23e-600b_0.5262178206107648_val-loss.pt'
-RESUME_MODEL_FPATH = 'scratchspace/trained_models/smart-flounder-all.07-01-2024.21_44_42/model_files/neuramatch_smart-flounder-all_1e-600b_0.017392600141465663_val-loss.pt'
+RESUME_MODEL_FPATH = 'scratchspace/trained_models/cyber-wallaby-all.08-01-2024.14_13_25/model_files/neuramatch_cyber-wallaby-all_3e-600b_0.26975961378261903_val-loss.pt'
 
 #
 ROOT_DIR = 'scratchspace/trained_models'
@@ -31,7 +31,7 @@ SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
 KSIZE = 7
 RADIUS_SCALE = .3
-VECTOR_LOSS_WEIGHT = 1.
+VECTOR_LOSS_WEIGHT = .7
 VECTOR_LOSS_H_WEIGHT = .1
 TVERSKY_SMOOTH = 1.
 TVERSKY_ALPHA = .6

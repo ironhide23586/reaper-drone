@@ -137,7 +137,7 @@ class KeypointLoss(nn.Module):
             vector_consistency_loss = vector_consistency_loss_map.mean()
 
             vector_loss = .6 * (.6 * vector_loss_raw + .4 * mag_loss_vec) + .4 * vector_consistency_loss
-            vector_loss *= 10
+            # vector_loss *= 10
 
             (conf_loss, conf_loss_eq), ((tp, fp, fn), (tp_eq, fp_eq, fn_eq)) = self.mask_loss(conf_masks_pred,
                                                                                               conf_masks_gt)
@@ -145,9 +145,10 @@ class KeypointLoss(nn.Module):
 
             mag_loss_hm = self.magnitude_loss(hm_pred)
             loss_heatmap = .6 * (.7 * loss_heatmap_eq + .3 * loss_heatmap) + .4 * mag_loss_hm
-            conf_loss = .05 * conf_loss_eq + .95 * conf_loss
+            conf_loss = .6 * conf_loss_eq + .4 * conf_loss
 
-            loss_hm = (0. * conf_loss + 1. * loss_heatmap)
+            loss_hm = (1. * conf_loss + 0. * loss_heatmap)
+
             residual_weight = 1. - self.vector_loss_weight
             loss = (self.vector_loss_weight * vector_loss) + (residual_weight * loss_hm)
 

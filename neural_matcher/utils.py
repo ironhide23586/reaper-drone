@@ -163,7 +163,7 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
     conf_targ = hmb.flatten()[targ_xy_1d]
     conf_mask_gt = (hma.flatten() + conf_targ) / 2.
 
-    f = conf_mask_gt > nmatch.heatmap_thresh.item()
+    f = conf_mask_gt > nmatch.heatmap_thresh
     txy = targ_xy_2d[:, f]
     confs_gt = conf_mask_gt[f]
     matches_xy_gt_ = np.vstack([nmatch.p_xy[0].detach().cpu().numpy()[:, f], txy]).T
