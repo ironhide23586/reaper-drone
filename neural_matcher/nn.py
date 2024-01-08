@@ -16,6 +16,7 @@ import torch
 from torch import nn
 from torchvision import transforms
 
+import utils
 from utils import CACHE_DIR
 import clip
 
@@ -53,17 +54,20 @@ class NeuraMatch(nn.Module):
                                                                (2, 2), bias=False),
                                             nn.BatchNorm2d(64))
 
-        self.heatmap_decoder = nn.Sequential(nn.ConvTranspose2d(64, 64, (9, 9),
+        self.heatmap_decoder = nn.Sequential(nn.ConvTranspose2d(32, 32, (9, 9),
                                                                 (1, 1), bias=False),
-                                             nn.BatchNorm2d(64), nn.LeakyReLU(),
-                                             nn.ConvTranspose2d(64, 32, (7, 7),
+                                             nn.BatchNorm2d(32), nn.LeakyReLU(),
+                                             nn.ConvTranspose2d(32, 32, (7, 7),
                                                                 (1, 1), bias=False),
                                              nn.BatchNorm2d(32), nn.LeakyReLU(),
                                              nn.ConvTranspose2d(32, 16, (6, 6),
                                                                 (2, 2), bias=False),
                                              nn.BatchNorm2d(16), nn.LeakyReLU(),
-                                             nn.ConvTranspose2d(16, 2, (6, 6),
-                                                                (2, 2), bias=True), nn.ReLU())
+                                             nn.ConvTranspose2d(16, 8, (4, 4),
+                                                                (2, 2), bias=False),
+                                             nn.BatchNorm2d(8), nn.LeakyReLU(),
+                                             nn.ConvTranspose2d(8, 1, (3, 3),
+                                                                (1, 1), bias=True), nn.ReLU())
         # self.heatmap_decoder.to('cuda')
         # ha = self.heatmap_decoder(va)
         self.vector_decoder = nn.Sequential(nn.ConvTranspose2d(64, 64, (9, 9),
@@ -76,9 +80,9 @@ class NeuraMatch(nn.Module):
                                                                (2, 2), bias=False),
                                             nn.BatchNorm2d(16), nn.LeakyReLU(),
                                             nn.ConvTranspose2d(16, 2, (6, 6),
-                                                               (2, 2), bias=True), nn.Tanh())
+                                                               (2, 2), bias=True))
 
-        self.residual_encoder = nn.Sequential(nn.Conv2d(3, 32, (5, 5),
+        self.residual_encoder = nn.Sequential(nn.Conv2d(6, 32, (5, 5),
                                                         (2, 2), bias=False),
                                               nn.BatchNorm2d(32), nn.LeakyReLU(),
                                               nn.Conv2d(32, 64, (5, 5),
@@ -87,18 +91,47 @@ class NeuraMatch(nn.Module):
                                               nn.Conv2d(64, 128, (7, 7),
                                                         (1, 1), bias=False),
                                               nn.BatchNorm2d(128), nn.LeakyReLU(),
-                                              nn.Conv2d(128, 32, (9, 9),
-                                                        (1, 1), bias=True))
+                                              nn.Conv2d(128, 64, (9, 9),
+                                                        (1, 1), bias=False),
+                                              nn.BatchNorm2d(64), nn.LeakyReLU())
+
+        self.residual_encoder_vector = nn.Sequential(nn.Conv2d(6, 32, (5, 5),
+                                                               (2, 2), bias=False),
+                                                     nn.BatchNorm2d(32), nn.LeakyReLU(),
+                                                     nn.Conv2d(32, 64, (5, 5),
+                                                               (2, 2), bias=False),
+                                                     nn.BatchNorm2d(64), nn.LeakyReLU(),
+                                                     nn.Conv2d(64, 128, (7, 7),
+                                                               (1, 1), bias=False),
+                                                     nn.BatchNorm2d(128), nn.LeakyReLU(),
+                                                     nn.Conv2d(128, 64, (9, 9),
+                                                               (1, 1), bias=False),
+                                                     nn.BatchNorm2d(64), nn.LeakyReLU())
+
         # self.residual_endcoder.to('cuda')
         # self.residual_endcoder(x_a).shape
-        self.model_params = (list(self.heatmap_decoder.parameters()) + list(self.vector_decoder.parameters()) \
-                             + list(self.residual_encoder.parameters()))
+        # self.model_params = (list(self.heatmap_decoder.parameters()) + list(self.vector_decoder.parameters()) \
+        #                      + list(self.residual_encoder.parameters()))
+
+        # self.model_params = (list(self.heatmap_decoder.parameters()) + list(self.residual_encoder.parameters()))
+        self.model_params = (list(self.vector_decoder.parameters()) + list(self.residual_encoder_vector.parameters()))
+
+        self.frozen_modules = [self.heatmap_decoder, self.residual_encoder]
         self.to(self.device)
+
+    def viz_fmap(self, v_a_res):
+        a = v_a_res[0, 10:13]
+        b = a - a.min()
+        b = b / b.max()
+        c = torch.transpose(torch.transpose(b, 0, 2), 0, 1)
+        d = c.detach().cpu().numpy()
+        e = d * 255
+        return e
 
     def forward(self, x_):
         x = x_.to(self.device)
-        x_a = x[:, 0]
-        x_b = x[:, 1]
+        # x_a = x[:, 0]
+        # x_b = x[:, 1]
 
         # x_a_clip = self.clip_resize(x_a)
         # x_b_clip = self.clip_resize(x_b)
@@ -109,18 +142,25 @@ class NeuraMatch(nn.Module):
         #
         # v_ab_clip = self.clip_condenser(x_in)
 
-        v_a_res = self.residual_encoder(x_a)
-        v_b_res = self.residual_encoder(x_b)
-        v_ab_res = torch.concat([v_a_res, v_b_res], dim=1)
+        x_rs = x.reshape(-1, 6, utils.SIDE, utils.SIDE)
 
-        # v_ab = v_ab_clip + v_ab_res
-        v_ab = v_ab_res
+        v_ab_conf = self.residual_encoder(x_rs)
+        v_ab_vec_residudal = self.residual_encoder_vector(x_rs)
 
-        heatmap = self.heatmap_decoder(v_ab)
-        match_vectors_pred = self.vector_decoder(v_ab)
+        v_a_conf = v_ab_conf[:, :32]
+        v_b_conf = v_ab_conf[:, 32:]
+
+        heatmap_a = self.heatmap_decoder(v_a_conf)
+        heatmap_b = self.heatmap_decoder(v_b_conf)
+        heatmap = torch.concat([heatmap_a, heatmap_b], dim=1)
+
+        v_ab_vec = v_ab_conf + v_ab_vec_residudal
+
+        match_vectors_pred = self.vector_decoder(v_ab_vec)
+        match_vectors_pred = torch.clip(match_vectors_pred, -2, 2)
 
         s = self.side
-        nb = x_a.shape[0]
+        nb = x.shape[0]
 
         mv = (match_vectors_pred.reshape(-1, 2, s * s) * (s - 1)).round().int()
 
@@ -128,10 +168,14 @@ class NeuraMatch(nn.Module):
 
         targ_xy_2d = torch.clamp(p_xy_tiled + mv, 0, s - 1)
         targ_xy_1d = targ_xy_2d[:, 0, :] + targ_xy_2d[:, 1, :] * s
+
         hm_targ = heatmap.reshape(-1, 2, s * s)[:, 1]
         conf_targ = torch.stack([hm_targ[i][targ_xy_1d[i]].reshape(s, s) for i in range(nb)])
 
-        conf_mask = (heatmap[:, 0] + conf_targ) / 2.
+        mv_targ = torch.transpose(match_vectors_pred.reshape(-1, 2, s * s), 2, 1)
+        match_vectors_pred_targ = torch.stack([mv_targ[i][targ_xy_1d[i]].T.reshape(2, s, s) for i in range(nb)])
+
+        conf_mask = (heatmap[:, 0] + conf_targ)
 
         match_xy_pairs = []
         confs = []
@@ -142,4 +186,4 @@ class NeuraMatch(nn.Module):
             confs.append(cm[bi, f])
             match_xy_pairs.append(torch.vstack([self.p_xy[0, :, f], targ_xy_2d[bi, :, f]]).T)
 
-        return (heatmap, match_vectors_pred, conf_mask), (match_xy_pairs, confs)
+        return (heatmap, match_vectors_pred, match_vectors_pred_targ, conf_mask), (match_xy_pairs, confs)

@@ -84,9 +84,13 @@ class KeypointLoss(nn.Module):
         cnts = ((tp, fp, fn), (tp_eq, fp_eq, fn_eq))
         return losses, cnts
 
+    def magnitude_loss(self, x):
+        l = torch.nan_to_num(nn.ReLU()(x[x > 0.] - 1.).mean())
+        return l
+
     def forward(self, nn_outs, gt_outs):
         (hm_gt, match_vectors_gt, conf_masks_gt), (match_xys_gt, confs_gt) = gt_outs
-        (hm_pred, match_vectors_pred, conf_masks_pred), (match_xys_pred, confs_pred) = nn_outs
+        (hm_pred, match_vectors_pred, match_vectors_pred_targ, conf_masks_pred), (match_xys_pred, confs_pred) = nn_outs
         hm_gt = hm_gt.to(self.device)
         match_vectors_gt = match_vectors_gt.to(self.device)
         conf_masks_gt = conf_masks_gt.to(self.device)
@@ -110,9 +114,6 @@ class KeypointLoss(nn.Module):
         elif self.train_module == 'all':
             vector_diffs = match_vectors_gt - match_vectors_pred
             vector_loss_map = torch.norm(vector_diffs, dim=1) / 2.8284271247461903  # root of 8
-            # vector_loss_map = (vector_diffs[:, 0] ** 2) + (vector_diffs[:, 1] ** 2)
-            residual_weight = (1. - self.vector_loss_weight) #/ 2.
-
             f = conf_masks_gt == 1.
             v_map = vector_loss_map.reshape(-1)
             vector_loss_nz = vector_loss_map[f]
@@ -123,22 +124,32 @@ class KeypointLoss(nn.Module):
             lz = torch.min(torch.Tensor([vector_loss_nz.shape[0], vector_loss_z_all.shape[0]])).to(self.device).int()
 
             vector_loss_z = torch.sort(vector_loss_z_all, descending=True)[0][:lz]
-            vector_loss_all = torch.hstack([vector_loss_nz, vector_loss_z])
-            vector_loss = vector_loss_all.mean()
+            vector_loss_balanced = torch.hstack([vector_loss_nz, vector_loss_z])
+            vector_loss_eq = vector_loss_balanced.mean()
+            vector_loss_all = vector_loss_map.mean()
+            vector_loss_raw = .6 * vector_loss_eq + .4 * vector_loss_all
 
-            # vector_loss_h = torch.nan_to_num(torch.mean(vector_loss_map[vector_loss_map > .1]))
-            # vector_loss_l = torch.nan_to_num(torch.mean(vector_loss_map[vector_loss_map <= .1]))
-            # vector_loss = ((self.vector_loss_h_weight * vector_loss_h)
-            #                + ((1. - self.vector_loss_h_weight) * vector_loss_l))
+            mag_loss_vec_pos = self.magnitude_loss(match_vectors_pred)
+            mag_loss_vec_neg = self.magnitude_loss(-match_vectors_pred)
+            mag_loss_vec = (mag_loss_vec_pos + mag_loss_vec_neg) / 2.
+
+            vector_consistency_loss_map = torch.norm(match_vectors_pred_targ + match_vectors_pred, dim=1)
+            vector_consistency_loss = vector_consistency_loss_map.mean()
+
+            vector_loss = .6 * (.6 * vector_loss_raw + .4 * mag_loss_vec) + .4 * vector_consistency_loss
+            vector_loss *= 10
 
             (conf_loss, conf_loss_eq), ((tp, fp, fn), (tp_eq, fp_eq, fn_eq)) = self.mask_loss(conf_masks_pred,
                                                                                               conf_masks_gt)
             (loss_heatmap, loss_heatmap_eq), _ = self.mask_loss(hm_pred, hm_gt)
 
-            loss_heatmap = .95 * loss_heatmap_eq + .05 * loss_heatmap
-            conf_loss = .95 * conf_loss_eq + .05 * conf_loss
+            mag_loss_hm = self.magnitude_loss(hm_pred)
+            loss_heatmap = .6 * (.7 * loss_heatmap_eq + .3 * loss_heatmap) + .4 * mag_loss_hm
+            conf_loss = .05 * conf_loss_eq + .95 * conf_loss
 
-            loss_hm = (.4 * conf_loss + .6 * loss_heatmap)
+            loss_hm = (0. * conf_loss + 1. * loss_heatmap)
+            residual_weight = 1. - self.vector_loss_weight
             loss = (self.vector_loss_weight * vector_loss) + (residual_weight * loss_hm)
 
-        return (loss, vector_loss, conf_loss, vector_loss_map), (tp, fp, fn)
+        return ((loss, vector_loss, vector_consistency_loss, conf_loss, vector_loss_map, vector_consistency_loss_map), \
+                (tp, fp, fn))

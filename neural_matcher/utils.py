@@ -197,9 +197,11 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
     writer.add_figure('match_confidence-gt', matplotlib_imshow(conf_mask_gt_viz), global_step=g_idx)
 
     with torch.no_grad():
-        (example_loss, example_vector_loss, example_conf_loss, vector_loss_map), (tp, fp, fn) = loss_fn(inference_outs,
-                                                                                                        gt_outs)
+        (example_loss, example_vector_loss, example_vector_consistency_loss, example_conf_loss, vector_loss_map, \
+            vector_consistency_loss_map), (tp, fp, fn) = loss_fn(inference_outs, gt_outs)
+
     vector_loss_viz = viz_heatmap(vector_loss_map[0].detach().cpu().numpy())
+    vector_consistency_loss_viz = viz_heatmap(vector_consistency_loss_map[0].detach().cpu().numpy())
     suffix_ = suffix + '-pred'
     mn = os.sep.join([viz_dir, '_'.join([fn_prefix, 'matches', suffix_ + '.jpg'])])
     cv2.imwrite(mn, match_viz)
@@ -213,6 +215,8 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
     cv2.imwrite(mn, conf_mask_viz)
     mn = os.sep.join([viz_dir, '_'.join([fn_prefix, '-vector-lossmap', suffix_ + '.jpg'])])
     cv2.imwrite(mn, vector_loss_viz)
+    mn = os.sep.join([viz_dir, '_'.join([fn_prefix, '-vector-consistency-lossmap', suffix_ + '.jpg'])])
+    cv2.imwrite(mn, vector_consistency_loss_viz)
 
     writer.add_figure('match_viz-pred', matplotlib_imshow(match_viz), global_step=g_idx)
     writer.add_figure('heatmap-a-pred', matplotlib_imshow(heatmap_a), global_step=g_idx)
@@ -220,6 +224,8 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
     writer.add_figure('match_vectors_viz-pred', matplotlib_imshow(match_vectors_viz), global_step=g_idx)
     writer.add_figure('match_confidence-pred', matplotlib_imshow(conf_mask_viz), global_step=g_idx)
     writer.add_figure('vector_loss_map-pred', matplotlib_imshow(vector_loss_viz), global_step=g_idx)
+    writer.add_figure('vector_consistency_loss_map-pred', matplotlib_imshow(vector_consistency_loss_viz),
+                      global_step=g_idx)
 
     score_dict = score_model(nmatch, data_loader_val, loss_fn)
 
@@ -227,15 +233,17 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
         writer.add_scalar(k, score_dict[k], g_idx)
     writer.add_scalar('val_example_loss', example_loss, g_idx)
     writer.add_scalar('val_example_vector_loss', example_vector_loss, g_idx)
+    writer.add_scalar('val_example_vector_consistency_loss', example_vector_consistency_loss, g_idx)
     writer.add_scalar('val_example_conf_loss', example_conf_loss, g_idx)
 
     if train_measures is not None:
         train_losses, grad_measures = train_measures
-        running_loss, running_vector_loss, running_conf_loss = train_losses
+        running_loss, running_vector_loss, running_vector_consistency_loss, running_conf_loss = train_losses
         running_g_mean, running_g_std, running_g_max, running_g_min = grad_measures
     else:
         running_loss = 0.
         running_vector_loss = 0.
+        running_vector_consistency_loss = 0.
         running_conf_loss = 0.
         running_g_mean = 0.
         running_g_std = 0.
@@ -246,6 +254,7 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
     score_dict['epoch_batch_iteration'] = bi
     score_dict['train_loss'] = running_loss
     score_dict['train_vector_loss'] = running_vector_loss
+    score_dict['train_vector_consistency_loss'] = running_vector_consistency_loss
     score_dict['train_conf_loss'] = running_conf_loss
     score_dict['train_grad_mean'] = running_g_mean
     score_dict['train_grad_std'] = running_g_std
@@ -268,3 +277,5 @@ def checkpoint_model(nmatch, train_measures, device, data_loader_val, ima, imb, 
     torch.save(nmatch.state_dict(), out_fp)
 
     nmatch.train()
+    for p in nmatch.frozen_modules:
+        p.eval()

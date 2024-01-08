@@ -13,25 +13,28 @@ Website: https://www.linkedin.com/in/souham/
 """
 import utils
 
-# RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/juicy-bull-all.25-10-2023.14_23_46/model_files/neuramatch_juicy-bull-all_19e-866b_0.10082299951909875_val-loss.pt'
-# RESUME_MODEL_FPATH = 'scratchspace/trained_models_2/towering-mongrel-all.25-12-2023.14_03_16/model_files/neuramatch_towering-mongrel-all_4e-1559b_0.36063403000453487_val-loss.pt'
-# RESUME_MODEL_FPATH = 'scratchspace/trained_models_0/sapphire-quokka-all.16-12-2023.16_13_00/model_files/neuramatch_sapphire-quokka-all_96e-1559b_0.01953604960083082_val-loss.pt'
-RESUME_MODEL_FPATH = None
+# RESUME_MODEL_FPATH = 'scratchspace/trained_models/notorious-penguin-all.06-01-2024.18_50_10/model_files/neuramatch_notorious-penguin-all_4e-600b_0.5206268919215679_val-loss.pt'
+# RESUME_MODEL_FPATH = 'scratchspace/trained_models/courageous-marmot-all.06-01-2024.19_52_49/model_files/neuramatch_courageous-marmot-all_1e-600b_0.6402534638046842_val-loss.pt'
 
+# RESUME_MODEL_FPATH = None
+# RESUME_MODEL_FPATH = 'scratchspace/trained_models/amiable-otter-all.07-01-2024.10_27_08/model_files/neuramatch_amiable-otter-all_23e-600b_0.5262178206107648_val-loss.pt'
+RESUME_MODEL_FPATH = 'scratchspace/trained_models/smart-flounder-all.07-01-2024.21_44_42/model_files/neuramatch_smart-flounder-all_1e-600b_0.017392600141465663_val-loss.pt'
+
+#
 ROOT_DIR = 'scratchspace/trained_models'
 
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
 LEARN_RATE = 1e-4
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
-KSIZE = 5
+KSIZE = 7
 RADIUS_SCALE = .3
-VECTOR_LOSS_WEIGHT = .7
+VECTOR_LOSS_WEIGHT = 1.
 VECTOR_LOSS_H_WEIGHT = .1
 TVERSKY_SMOOTH = 1.
-TVERSKY_ALPHA = .7
+TVERSKY_ALPHA = .6
 TVERSKY_GAMMA = .75
 RUNNING_LOSS_WINDOW = 80
 
@@ -122,7 +125,8 @@ if __name__ == '__main__':
 
     if RESUME_MODEL_FPATH is not None:
         print('Resuming from', RESUME_MODEL_FPATH)
-        nmatch.load_state_dict(torch.load(RESUME_MODEL_FPATH, map_location=device), strict=False)
+        nmatch.load_state_dict(torch.load(RESUME_MODEL_FPATH, map_location=device),
+                               strict=False)
         print('Loaded!')
     else:
         print('Training from scratch...')
@@ -142,6 +146,7 @@ if __name__ == '__main__':
                      val_df_dict, viz_dir, writer, 0, KSIZE, RADIUS_SCALE, BLEND_COEFF)
     running_loss = 0.
     running_vector_loss = 0.
+    running_vector_consistency_loss = 0.
     running_conf_loss = 0.
     running_g_mean = 0.
     running_g_std = 0.
@@ -152,13 +157,18 @@ if __name__ == '__main__':
     prev_running_loss = running_loss
     for ei in range(NUM_EPOCHS):
         nmatch.train()
+        for p in nmatch.frozen_modules:
+            p.eval()
         for bi, (ims, gt_outs) in enumerate(tqdm(data_loader_train)):
             pred_outs = nmatch(ims)
             nmatch.zero_grad()
-            (loss, vector_loss, conf_loss, _), _ = loss_fn(pred_outs, gt_outs)
+            (loss, vector_loss, vector_consistency_loss, conf_loss, _, _), _ = loss_fn(pred_outs, gt_outs)
             loss.backward()
+            for p in nmatch.frozen_modules:
+                p.zero_grad()
             running_loss += loss.item()
             running_vector_loss += vector_loss.item()
+            running_vector_consistency_loss += vector_consistency_loss.item()
             running_conf_loss += conf_loss.item()
 
             # nmatch.clip_model.zero_grad()
@@ -187,16 +197,20 @@ if __name__ == '__main__':
                 den = max(den, 1.)
                 running_loss /= den
                 running_vector_loss /= den
+                running_vector_consistency_loss /= den
                 running_conf_loss /= den
                 running_g_mean /= den
                 running_g_std /= den
                 running_g_max /= den
                 running_g_min /= den
-                prev_running_losses = [running_loss, running_vector_loss, running_conf_loss]
+                prev_running_losses = [running_loss, running_vector_loss, running_vector_consistency_loss,
+                                       running_conf_loss]
                 prev_running_grad_measures = [running_g_mean, running_g_std, running_g_max, running_g_min]
                 print('Loss:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', running_loss)
                 print('Vector Loss:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-',
                       running_vector_loss)
+                print('Vector Consistency Loss:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-',
+                      running_vector_consistency_loss)
                 print('Conf Loss:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', running_conf_loss)
                 print('Grad Mean:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', g_mean)
                 print('Grad Std:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', g_std)
@@ -204,6 +218,8 @@ if __name__ == '__main__':
                 print('Grad Min:', sess_id + '_' + '-'.join([str(ei) + 'e', str(bi) + 'b']), '-', g_min)
                 writer.add_scalar('train_loss', running_loss, ei * len(data_loader_train) + bi)
                 writer.add_scalar('train_vector_loss', running_vector_loss, ei * len(data_loader_train) + bi)
+                writer.add_scalar('train_vector_consistency_loss', running_vector_consistency_loss,
+                                  ei * len(data_loader_train) + bi)
                 writer.add_scalar('train_conf_loss', running_conf_loss, ei * len(data_loader_train) + bi)
                 writer.add_scalar('grad_mean', g_mean, ei * len(data_loader_train) + bi)
                 writer.add_scalar('grad_std', g_std, ei * len(data_loader_train) + bi)
@@ -211,6 +227,7 @@ if __name__ == '__main__':
                 writer.add_scalar('grad_min', g_min, ei * len(data_loader_train) + bi)
                 running_loss = 0.
                 running_vector_loss = 0.
+                running_vector_consistency_loss = 0.
                 running_conf_loss = 0.
                 running_g_mean = 0.
                 running_g_std = 0.
@@ -229,19 +246,22 @@ if __name__ == '__main__':
                                  bi, sess_id, log_fname, val_df_dict, viz_dir, writer,
                                  ei * len(data_loader_train) + bi, KSIZE, RADIUS_SCALE, BLEND_COEFF)
             nmatch.train()
+            for p in nmatch.frozen_modules:
+                p.eval()
         if bi < RUNNING_LOSS_WINDOW:
             den = max(den, 1.)
             running_loss /= den
             running_vector_loss /= den
+            running_vector_consistency_loss /= den
             running_conf_loss /= den
             running_g_mean /= den
             running_g_std /= den
             running_g_max /= den
             running_g_min /= den
-            prev_running_losses = [running_loss, running_vector_loss, running_conf_loss]
+            prev_running_losses = [running_loss, running_vector_loss, running_vector_consistency_loss,
+                                   running_conf_loss]
             prev_running_grad_measures = [running_g_mean, running_g_std, running_g_max, running_g_min]
         checkpoint_model(nmatch, (prev_running_losses, prev_running_grad_measures), device, data_loader_val,
                          ima, imb, model_dir, loss_fn, ei,
                          bi, sess_id, log_fname, val_df_dict, viz_dir, writer,
                          ei * len(data_loader_train) + bi, KSIZE, RADIUS_SCALE, BLEND_COEFF)
-

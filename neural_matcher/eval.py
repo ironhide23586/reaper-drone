@@ -47,7 +47,7 @@ def viz_match_vectors(match_vectors):
 
 
 def viz_matches(a, b, inference_outs, blend_coeff=.65):
-    (heatmap, match_vectors_pred, conf_mask), (match_xy_pairs_, confs) = inference_outs
+    (heatmap, match_vectors_pred, _, conf_mask), (match_xy_pairs_, confs) = inference_outs
     match_xy_pairs = match_xy_pairs_[0]
     hm_a = viz_heatmap(heatmap[0][0].detach().cpu().numpy())
     hm_b = viz_heatmap(heatmap[0][1].detach().cpu().numpy())
@@ -92,6 +92,7 @@ def score_model(nmatch, data_loader, loss_fn):
     score_dict = {}
     val_loss = 0.
     val_vector_loss = 0.
+    val_vector_consistency_loss = 0.
     val_conf_loss = 0.
     tps = 0
     fps = 0
@@ -100,18 +101,21 @@ def score_model(nmatch, data_loader, loss_fn):
     with torch.no_grad():
         for bi, (ims, gt_outs) in enumerate(tqdm(data_loader)):
             nn_outs = nmatch(ims)
-            (loss, vector_loss, conf_loss, vector_loss_map), (tp, fp, fn) = loss_fn(nn_outs, gt_outs)
+            (loss, vector_loss, vector_consistency_loss, conf_loss, vector_loss_map, vector_consistency_loss_map), \
+                (tp, fp, fn) = loss_fn(nn_outs, gt_outs)
 
             tps += tp
             fps += fp
             fns += fn
             val_loss += float(loss.cpu().numpy())
             val_vector_loss += float(vector_loss.cpu().numpy())
+            val_vector_consistency_loss += float(vector_consistency_loss.cpu().numpy())
             val_conf_loss += float(conf_loss.cpu().numpy())
             ni += 1
 
             val_loss_ = val_loss / ni
             val_vector_loss_ = val_vector_loss / ni
+            val_vector_consistency_loss_ = val_vector_consistency_loss / ni
             val_conf_loss_ = val_conf_loss / ni
             prec = float((tps / (tps + fps)).cpu().numpy())
             rec = float((tps / (tps + fns)).cpu().numpy())
@@ -119,6 +123,7 @@ def score_model(nmatch, data_loader, loss_fn):
 
             score_dict['val_loss'] = val_loss_
             score_dict['val_vector_loss'] = val_vector_loss_
+            score_dict['val_vector_consistency_loss'] = val_vector_consistency_loss_
             score_dict['val_conf_loss'] = val_conf_loss_
             score_dict['fscore'] = fsc
             score_dict['precision'] = prec
