@@ -40,7 +40,7 @@ def resizewin(width, height):
     glLoadIdentity()
 
 
-def init():
+def viz_init():
     glShadeModel(GL_SMOOTH)
     glClearColor(0.0, 0.0, 0.0, 0.0)
     glClearDepth(1.0)
@@ -49,26 +49,20 @@ def init():
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)
 
 
-def draw(w, nx, ny, nz, ax, ay, az, wx, wy, wz):
+def draw(nx, ny, nz):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glLoadIdentity()
     glTranslatef(0, 0.0, -7.0)
 
-    drawText((-2.6, 1.8, 2), "PyTeapot", 18)
-    drawText((-2.6, 1.6, 2), "Module to visualize quaternion or Euler angles data", 16)
-    drawText((-2.6, -2, 2), "Press Escape to exit.", 16)
+    # drawText((-2.6, 1.8, 2), "PyTeapot", 18)
+    # drawText((-2.6, 1.6, 2), "Module to visualize quaternion or Euler angles data", 4)
+    # drawText((-2.6, -2, 2), "Press Escape to exit.", 16)
 
     yaw = nx
-    pitch = ny
-    roll = nz
-    drawText((-2.6, -1.8, 2), "Yaw: %f, Pitch: %f, Roll: %f, AX: %f, AY: %f, AZ: %f, wX: %f, wY: %f, wZ: %f" %(yaw,
-                                                                                                               pitch,
-                                                                                                               roll,
-                                                                                                               ax, ay,
-                                                                                                               az,
-                                                                                                               wx, wy,
-                                                                                                               wz),
-             16)
+    pitch = -ny
+    roll = -nz
+    # drawText((-2.6, -1.8, 2), "Yaw: %f, Pitch: %f, Roll: %f" %(yaw, pitch, roll), 4)
+
     glRotatef(roll, 0.00, 0.00, 1.00)
     glRotatef(pitch, 1.00, 0.00, 0.00)
     glRotatef(yaw, 0.00, 1.00, 0.00)
@@ -127,7 +121,7 @@ if __name__ == '__main__':
     screen = pygame.display.set_mode((1920, 1080), video_flags)
     pygame.display.set_caption("PyTeapot IMU orientation visualization")
     resizewin(1920, 1080)
-    init()
+    viz_init()
     frames = 0
     ticks = pygame.time.get_ticks()
     while True:

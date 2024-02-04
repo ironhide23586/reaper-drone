@@ -127,7 +127,9 @@ class KeypointLoss(nn.Module):
             vector_loss_balanced = torch.hstack([vector_loss_nz, vector_loss_z])
             vector_loss_eq = vector_loss_balanced.mean()
             vector_loss_all = vector_loss_map.mean()
-            vector_loss_raw = .6 * vector_loss_eq + .4 * vector_loss_all
+            vector_loss_raw = .1 * vector_loss_eq + .9 * vector_loss_all  # flip and see
+
+            # TODO: Pixel-wise magnitude loss
 
             mag_loss_vec_pos = self.magnitude_loss(match_vectors_pred)
             mag_loss_vec_neg = self.magnitude_loss(-match_vectors_pred)
@@ -136,7 +138,7 @@ class KeypointLoss(nn.Module):
             vector_consistency_loss_map = torch.norm(match_vectors_pred_targ + match_vectors_pred, dim=1)
             vector_consistency_loss = vector_consistency_loss_map.mean()
 
-            vector_loss = .6 * (.6 * vector_loss_raw + .4 * mag_loss_vec) + .4 * vector_consistency_loss
+            vector_loss = .8 * (.95 * vector_loss_raw + .05 * mag_loss_vec) + .2 * vector_consistency_loss
             # vector_loss *= 10
 
             (conf_loss, conf_loss_eq), ((tp, fp, fn), (tp_eq, fp_eq, fn_eq)) = self.mask_loss(conf_masks_pred,

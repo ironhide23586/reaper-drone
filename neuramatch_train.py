@@ -17,10 +17,10 @@ import utils
 # RESUME_MODEL_FPATH = 'scratchspace/trained_models/courageous-marmot-all.06-01-2024.19_52_49/model_files/neuramatch_courageous-marmot-all_1e-600b_0.6402534638046842_val-loss.pt'
 
 # RESUME_MODEL_FPATH = None
-# RESUME_MODEL_FPATH = 'scratchspace/trained_models/amiable-otter-all.07-01-2024.10_27_08/model_files/neuramatch_amiable-otter-all_23e-600b_0.5262178206107648_val-loss.pt'
-RESUME_MODEL_FPATH = 'scratchspace/trained_models/cyber-wallaby-all.08-01-2024.14_13_25/model_files/neuramatch_cyber-wallaby-all_3e-600b_0.26975961378261903_val-loss.pt'
+RESUME_MODEL_FPATH = 'scratchspace/trained_models/amiable-otter-all.07-01-2024.10_27_08/model_files/neuramatch_amiable-otter-all_23e-600b_0.5262178206107648_val-loss.pt'
+# RESUME_MODEL_FPATH = 'scratchspace/trained_models/cyber-wallaby-all.08-01-2024.14_13_25/model_files/neuramatch_cyber-wallaby-all_8e-600b_0.2664301499072795_val-loss.pt'
 
-#
+# scp -r souhamb@192.168.68.52:/home/souhamb/workplace/reaper-drone/scratchspace/trained_models/cute-penguin-all.08-01-2024.16_52_48/model_files cute-penguin-all.08-01-2024.16_52_48/model_files/
 ROOT_DIR = 'scratchspace/trained_models'
 
 TRAIN_MODULE = 'all'  # 'heatmap' or 'matcher' or 'all
@@ -29,9 +29,9 @@ BATCH_SIZE = 16
 NUM_EPOCHS = 100000
 SAVE_EVERY_N_BATCHES = 600
 BLEND_COEFF = .55
-KSIZE = 7
+KSIZE = 23
 RADIUS_SCALE = .3
-VECTOR_LOSS_WEIGHT = .7
+VECTOR_LOSS_WEIGHT = .6
 VECTOR_LOSS_H_WEIGHT = .1
 TVERSKY_SMOOTH = 1.
 TVERSKY_ALPHA = .6
