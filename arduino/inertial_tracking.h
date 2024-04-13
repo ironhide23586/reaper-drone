@@ -1,11 +1,14 @@
 #ifndef IMU_H
 #define IMU_H
 
-#include "mpu6050.h"
+// #include "mpu6050.h"
+#include "lsm_imu_module.h"
 #include "kalman.h"
 
+// #include <Arduino_LSM9DS1.h>
 
-namespace IMU {
+
+namespace InertialTracking {
 
     class IMUDevice {
     private:
@@ -13,7 +16,8 @@ namespace IMU {
         bool kf_init = false;
         uint8_t dev_id;
         uint8_t dev_addr;
-        MPU6050* dev_mpu6050;
+        // MPU6050* dev;
+        LSM9DS1* dev;
 
     public:
 
@@ -21,13 +25,15 @@ namespace IMU {
 
         float gyro_xyz[3];
         float acc_xyz[3];
+        float mag_xyz[3];
         double read_timestamp;
 
         float gyro_xyz_offset[3] = {0};
 
         float temp;
         
-        IMUDevice(MPU6050* dev);
+        // IMUDevice(MPU6050* dev);
+        IMUDevice(LSM9DS1* dev);
 
         void init();
         void read_data();
@@ -38,16 +44,17 @@ namespace IMU {
     class Pose {
     private:
 
-        int calibration_counter = 0;
-        float yaw_tmp, pitch_tmp, roll_tmp;
+        int calibration_counter = 1;
+        float yaw_tmp = 0, pitch_tmp, roll_tmp;
         float yaw_scale;
 
         float gyro_xyz[3], acc_xyz[3];
         float gyro_drift[3] = {0};
-        float gyro_w[2] = {0};
+        float acc_drift[3] = {0};
+        float gyro_w[2] = {GYRO_WEIGHT, GYRO_WEIGHT};
 
         float accAngleX, accAngleY;
-        float gyroAngleX = 0, gyroAngleY = 0, gyroAngleZ = 0;
+        float gyroAngleX = 0, gyroAngleY = 0;//, gyroAngleZ = 0;
         double previousTime, elapsedTime;
         
         float yaw_raw, yaw_kf;
@@ -80,13 +87,14 @@ namespace IMU {
 
         Pose(IMUDevice* dev);
 
-        void get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg, bool filter_ypr=false, bool filter_imu=false);
+        void get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg, bool filter_ypr=false);
     };
 
     class MotionTracking {
     private:
 
-        MPU6050* mpu;
+        // MPU6050* mpu;
+        LSM9DS1* mpu;
         bool first_sampled = false;
         IMUDevice* dev;
         Pose* pose;
@@ -95,7 +103,7 @@ namespace IMU {
 
         MotionTracking();
         void init();
-        void get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg);
+        void get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg, bool filter_ypr);
     };
 }
 

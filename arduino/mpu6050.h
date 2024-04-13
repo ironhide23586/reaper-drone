@@ -4,12 +4,12 @@
 #include "utils.h"
 
 
-namespace IMU {
+namespace InertialTracking {
 
     class MPU6050 {
     private:
 
-        uint8_t MPU_ADDRESS = 0x68;
+        const uint8_t MPU_ADDRESS = 0x68;
         uint8_t MPU_DATA_BYTE_BUFFER[14];
 
         const uint8_t MAG_ADDRESS = 0x0C;
@@ -60,7 +60,6 @@ namespace IMU {
 
     public:
         MPU6050();
-        MPU6050(uint8_t device_address);
 
         void init_mpu();
         uint8_t get_device_id();

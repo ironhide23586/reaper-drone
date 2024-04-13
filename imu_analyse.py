@@ -2,6 +2,7 @@
 import os
 import datetime
 from glob import glob
+import sys
 import fnmatch
 
 import serial
@@ -14,6 +15,35 @@ os.makedirs(out_dir, exist_ok=True)
 
 fid = datetime.datetime.now().strftime("%x.%X").replace('/', '_').replace(':', '-')
 out_fpath = out_dir + '/' + fid + '_mpu6050.csv'
+
+
+def serial_ports():
+    """ Lists serial port names
+
+        :raises EnvironmentError:
+            On unsupported or unknown platforms
+        :returns:
+            A list of the serial ports available on the system
+    """
+    if sys.platform.startswith('win'):
+        ports = ['COM%s' % (i + 1) for i in range(256)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        # this excludes your current terminal "/dev/tty"
+        ports = glob('/dev/tty[A-Za-z]*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob('/dev/tty.*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+
+    result = []
+    for port in ports:
+        try:
+            s = serial.Serial(port)
+            s.close()
+            result.append(port)
+        except (OSError, serial.SerialException):
+            pass
+    return result
 
 # existing_df_fpaths = glob(out_dir + '/*')
 #
@@ -58,7 +88,9 @@ viz_init()
 pygame.init()
 ticks = pygame.time.get_ticks()
 
-s = serial.Serial('/dev/cu.usbserial-1120', 250000)
+sps = serial_ports()
+print(sps[-1])
+s = serial.Serial(sps[-1], 250000)
 r = s.readline()
 cnt = 0
 res = {}

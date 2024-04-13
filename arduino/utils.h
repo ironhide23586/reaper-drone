@@ -6,14 +6,55 @@
 #include <math.h>
 #include <Arduino.h>
 
+#define IMU_MASTER_I2C_ADDRESS 0x00
+#define LIDAR_SLAVE_I2C_ADDRESS 0x01
 
+#define TFMINI_BAUDRATE   115200
 #define BAUD_RATE 250000
 #define I2C_FREQUENCY_HZ 400000
-#define GYRO_WEIGHT 0.96f
-#define NUM_CALIBRATION_SAMPLES 1000
+#define GYRO_WEIGHT 0.97f
+#define NUM_CALIBRATION_SAMPLES 2000
 
 
-inline void stall() {while(1);}
+inline void stall() {
+  while(1) {
+    delay(5000);
+  }
+}
+
+
+inline void initialize_mcu() {
+#ifdef MASTER_NANO
+  Serial.begin(BAUD_RATE);
+#endif
+#ifdef SLAVE_NANO_0
+  Serial.begin(TFMINI_BAUDRATE);
+#endif
+
+  while (!Serial);
+  
+#ifdef MASTER_NANO
+  Serial.print("Serial Bus Initialized at ");
+  Serial.print(BAUD_RATE);
+  Serial.println(" baud rate.");
+#endif
+#ifdef SLAVE_NANO_0
+  // Serial.print(TFMINI_BAUDRATE);
+#endif
+}
+
+
+inline void I2CsendToMaster(uint8_t d) {
+  Wire.beginTransmission(IMU_MASTER_I2C_ADDRESS);
+  Wire.write(d);
+  Wire.endTransmission(true);
+}
+
+inline void I2CsendToMaster(uint16_t d) {
+  Wire.beginTransmission(IMU_MASTER_I2C_ADDRESS);
+  Wire.write(d);
+  Wire.endTransmission(true);
+}
 
 
 inline void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)

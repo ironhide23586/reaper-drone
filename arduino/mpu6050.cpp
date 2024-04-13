@@ -1,11 +1,7 @@
 #include "mpu6050.h"
 
 
-namespace IMU {
-
-    MPU6050::MPU6050(uint8_t device_address) {
-        MPU6050::MPU_ADDRESS = device_address;
-    }
+namespace InertialTracking {
 
     MPU6050::MPU6050() {}
 

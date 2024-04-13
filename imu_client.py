@@ -59,7 +59,7 @@ def draw(nx, ny, nz):
     # drawText((-2.6, -2, 2), "Press Escape to exit.", 16)
 
     yaw = nx
-    pitch = -ny
+    pitch = ny
     roll = -nz
     # drawText((-2.6, -1.8, 2), "Yaw: %f, Pitch: %f, Roll: %f" %(yaw, pitch, roll), 4)
 
