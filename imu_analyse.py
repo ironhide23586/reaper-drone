@@ -3,11 +3,11 @@ import os
 import datetime
 from glob import glob
 import sys
-import fnmatch
+# import fnmatch
 
 import serial
-import pandas as pd
-from matplotlib import pyplot as plt
+# import pandas as pd
+# from matplotlib import pyplot as plt
 
 
 out_dir = 'sensor_logs'
@@ -75,9 +75,9 @@ def serial_ports():
 
 import pygame
 
-from OpenGL.GL import *
-from OpenGL.GLU import *
-from pygame.locals import *
+# from OpenGL.GL import *
+# from OpenGL.GLU import *
+from pygame.constants import OPENGL, DOUBLEBUF, QUIT, KEYDOWN, K_ESCAPE
 from imu_client import viz_init, draw, resizewin
 
 video_flags = OPENGL | DOUBLEBUF
@@ -98,8 +98,8 @@ while True:
     r = s.readline()
     a = r.decode('utf-8', errors='ignore').strip()
     chunks = a.split('\t')
-    if len(chunks) == 3 and '->' not in a and 'Reset' not in a and '(PR)' not in a:
-        y, p, r = list(map(float, chunks))
+    if '<->' in a:
+        y, p, r = list(map(float, chunks[:3]))
         event = pygame.event.poll()
         if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
             break

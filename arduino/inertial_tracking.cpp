@@ -14,18 +14,18 @@ namespace InertialTracking {
         MotionTracking::dev->init();
     }
 
-    void MotionTracking::get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg, bool filter_ypr) {
+    void MotionTracking::get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg, float *heading_arg, float *imu_raw_vals, bool filter_ypr) {
         if (!MotionTracking::first_sampled) {
             // MotionTracking::warmup();
             MotionTracking::pose->currentTime = micros();
             Serial.println("Measuring Gyro Drift.");
             for (int i = 0; i < NUM_CALIBRATION_SAMPLES; i++) {
-                MotionTracking::pose->get_pose(yaw_arg, pitch_arg, roll_arg, filter_ypr);
+                MotionTracking::pose->get_pose(yaw_arg, pitch_arg, roll_arg, heading_arg, imu_raw_vals, filter_ypr);
             }
             MotionTracking::first_sampled = true;
         }
         // stall();
-        MotionTracking::pose->get_pose(yaw_arg, pitch_arg, roll_arg, filter_ypr);
+        MotionTracking::pose->get_pose(yaw_arg, pitch_arg, roll_arg, heading_arg, imu_raw_vals, filter_ypr);
     }
 
     // IMUDevice::IMUDevice(MPU6050* dev) {
@@ -82,14 +82,14 @@ namespace InertialTracking {
         Pose::imu_device = dev;
     }
 
-    void Pose::get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg, bool filter_ypr) {
+    void Pose::get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg, float *heading_arg, float *imu_raw_vals, bool filter_ypr) {
         Pose::imu_device->read_data();
 
         Pose::previousTime = Pose::currentTime;        // Previous time is stored before the actual time read
         Pose::currentTime = Pose::imu_device->read_timestamp;           // Current time actual time read
         Pose::elapsedTime = (Pose::currentTime - Pose::previousTime) / 1000000; // Divide by 1000000 to get seconds
 
-        get_yaw_pitch_roll(&yaw_raw, &pitch_raw, &roll_raw, filter_ypr);
+        get_attitude(&yaw_raw, &pitch_raw, &roll_raw, heading_arg, imu_raw_vals, filter_ypr);
         if (filter_ypr)
             filter_yaw_pitch_roll(yaw_raw, pitch_raw, roll_raw, yaw_arg, pitch_arg, roll_arg);
         else {
@@ -115,14 +115,34 @@ namespace InertialTracking {
         }
     }
 
-    void Pose::get_yaw_pitch_roll(float *yaw_arg, float *pitch_arg, float *roll_arg, bool filtered=false) {
-        if (filtered) {
-            Pose::filter_imu_readings();
+    float Pose::get_heading() {
+        float heading_final_ = atan2f(Pose::mag_xyz[0] * (1 + sinf(abs(Pose::pitch_tmp) * PI / 180)), Pose::mag_xyz[1] * (1 + sinf(abs(Pose::roll_tmp) * PI / 180))) * 180 / PI;
+        if (heading_final_ > 0) {
+            heading_final_ = (heading_final_ / 180.) * 270;
         } else {
-            for (int i = 0; i < 3; i++) {
-                Pose::gyro_xyz[i] = Pose::imu_device->gyro_xyz[i];
-                Pose::acc_xyz[i] = Pose::imu_device->acc_xyz[i];
-            }
+            heading_final_ = 360 + ((heading_final_ / 180) * 90);
+        }
+
+        heading_final_ = (360 - heading_final_);
+        if (heading_final_ >= 0 && heading_final_ < 90) {
+            heading_final_ = 270 + heading_final_;
+        } else {
+            heading_final_ -= 90;
+        }
+        heading_final_ += 20;
+        if (heading_final_ > 360) heading_final_ -= 360; 
+        return heading_final_;
+    }
+
+    void Pose::get_attitude(float *yaw_arg, float *pitch_arg, float *roll_arg, float *heading_arg,
+                            float *imu_raw_vals, bool filtered=false) {
+        for (int i = 0; i < 3; i++) {
+            Pose::gyro_xyz[i] = Pose::imu_device->gyro_xyz[i];
+            Pose::acc_xyz[i] = Pose::imu_device->acc_xyz[i];
+            Pose::mag_xyz[i] = Pose::imu_device->mag_xyz[i]; //- (Pose::mag_drift[i] / Pose::calibration_counter);
+
+            imu_raw_vals[i] = Pose::gyro_xyz[i];
+            imu_raw_vals[3 + i] = Pose::acc_xyz[i];
         }
         float dx = pow(Pose::acc_xyz[0], 2) + pow(Pose::acc_xyz[2], 2);
         if (dx > 0)
@@ -138,7 +158,7 @@ namespace InertialTracking {
         Pose::gyroAngleY = ((Pose::gyro_xyz[1] * Pose::elapsedTime) - (Pose::gyro_drift[1] / Pose::calibration_counter));
 
         Pose::yaw_tmp += (Pose::gyro_xyz[2] * Pose::elapsedTime) - (Pose::gyro_drift[0] / Pose::calibration_counter);
-
+        float yaw_final = Pose::yaw_tmp;
         if (Pose::calibration_counter <= NUM_CALIBRATION_SAMPLES) {
             Pose::gyro_drift[0] += Pose::yaw_tmp;
             Pose::gyro_drift[1] += Pose::gyroAngleY;
@@ -148,26 +168,27 @@ namespace InertialTracking {
             Pose::acc_drift[2] += Pose::accAngleX;
             
             if (Pose::calibration_counter >= NUM_CALIBRATION_SAMPLES) {
-                Pose::gyro_drift[0] /= NUM_CALIBRATION_SAMPLES;
-                Pose::gyro_drift[1] /= NUM_CALIBRATION_SAMPLES;
-                Pose::gyro_drift[2] /= NUM_CALIBRATION_SAMPLES;
                 Serial.print("Gyro drift (YPR):\t");
 
-                Serial.print(Pose::gyro_drift[0], 9);
+                Serial.print(Pose::gyro_drift[0] / Pose::calibration_counter, 9);
                 Serial.print("\t");
-                Serial.print(Pose::gyro_drift[1], 9);
+                Serial.print(Pose::gyro_drift[1] / Pose::calibration_counter, 9);
                 Serial.print("\t");
-                Serial.print(Pose::gyro_drift[2], 9);
+                Serial.print(Pose::gyro_drift[2] / Pose::calibration_counter, 9);
                 Serial.print("\n");
 
-                Pose::acc_drift[1] /= NUM_CALIBRATION_SAMPLES;
-                Pose::acc_drift[2] /= NUM_CALIBRATION_SAMPLES;
+                Pose::acc_drift[1] /= Pose::calibration_counter;
+                Pose::acc_drift[2] /= Pose::calibration_counter;
 
                 Pose::gyroAngleX = Pose::acc_drift[2];
                 Pose::gyroAngleY = Pose::acc_drift[1];
 
                 Pose::pitch_tmp = Pose::gyroAngleY;
                 Pose::roll_tmp = Pose::gyroAngleX;
+                yaw_offset = get_heading();
+                Serial.print("Yaw Offset in Degrees: ");
+                Serial.println(yaw_offset);
+                // stall();
 
                 Serial.print("Accelerometer drift (PR):\t");
 
@@ -179,39 +200,29 @@ namespace InertialTracking {
             // delay(1);
             Pose::calibration_counter++;
         } else {
-            // Pose::pitch_tmp = GYRO_WEIGHT * Pose::gyroAngleY + (1.0f - GYRO_WEIGHT) * Pose::accAngleY;
-            // Pose::roll_tmp = GYRO_WEIGHT * Pose::gyroAngleX + (1.0f - GYRO_WEIGHT) * Pose::accAngleX;
-
             Pose::pitch_tmp = GYRO_WEIGHT * (Pose::pitch_tmp + Pose::gyroAngleY) + (1. - GYRO_WEIGHT) * Pose::accAngleY;
             Pose::roll_tmp = GYRO_WEIGHT * (Pose::roll_tmp + Pose::gyroAngleX) + (1. - GYRO_WEIGHT) * Pose::accAngleX;
 
+            Pose::heading_tmp = get_heading();
+
+            float d = yaw_offset - Pose::heading_tmp;
+            if ((yaw_offset - Pose::heading_tmp) > 180)
+                d = -(Pose::heading_tmp + (360 - yaw_offset));
+
+            Pose::yaw_tmp = GYRO_WEIGHT * (Pose::yaw_tmp) + (1. - GYRO_WEIGHT) * d;
+
+            if (Pose::yaw_tmp < 0) yaw_final = Pose::yaw_tmp + 360;
+            if (Pose::yaw_tmp > 360) yaw_final = Pose::yaw_tmp - 360;
+
+            for (int i = 0; i < 3; i++) {
+                imu_raw_vals[i + 6] = Pose::mag_xyz[i];
+            }
         }
-
-        // Pose::yaw_scale = sinf(Pose::yaw_tmp * 0.0174556f);
-        // Pose::roll_tmp -= Pose::pitch_tmp * Pose::yaw_scale;
-        // Pose::pitch_tmp += Pose::roll_tmp * Pose::yaw_scale;
-        
-        // if (Pose::calibration_counter > NUM_CALIBRATION_SAMPLES) {
-        //     Serial.print(yaw_tmp);
-        //     Serial.print("\t");
-
-        //     Serial.print(Pose::gyroAngleY - Pose::gyro_drift[1]);
-        //     Serial.print(" - ");
-        //     Serial.print(Pose::accAngleY);
-        //     Serial.print(" => ");
-        //     Serial.print(Pose::gyroAngleY - Pose::gyro_drift[1] - (Pose::accAngleY));
-        //     Serial.print("\t");
-
-        //     Serial.print(Pose::gyroAngleX - Pose::gyro_drift[2]);
-        //     Serial.print(" - ");
-        //     Serial.print(Pose::accAngleX);
-        //     Serial.print(" => ");
-        //     Serial.print(Pose::gyroAngleX - Pose::gyro_drift[2] - (Pose::accAngleX));
-        //     Serial.print("\n");
-        // }
-
-        *yaw_arg = Pose::yaw_tmp;
+        *yaw_arg = yaw_final;
         *pitch_arg = Pose::pitch_tmp;
-        *roll_arg = Pose::roll_tmp;
+        *roll_arg = Pose::roll_tmp;   
+
+        *heading_arg = Pose::heading_tmp;
+
     }
 }

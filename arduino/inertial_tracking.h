@@ -45,12 +45,15 @@ namespace InertialTracking {
     private:
 
         int calibration_counter = 1;
-        float yaw_tmp = 0, pitch_tmp, roll_tmp;
-        float yaw_scale;
+        float yaw_tmp = 0, pitch_tmp, roll_tmp, heading_tmp;
+        float num_tmp = 0, den_tmp = 0;
+        float yaw_offset;
 
-        float gyro_xyz[3], acc_xyz[3];
+        float gyro_xyz[3], acc_xyz[3], mag_xyz[3];
         float gyro_drift[3] = {0};
         float acc_drift[3] = {0};
+        // float mag_drift[3] = {0};
+        // float mag_drift_[3] = {0};
         float gyro_w[2] = {GYRO_WEIGHT, GYRO_WEIGHT};
 
         float accAngleX, accAngleY;
@@ -78,8 +81,8 @@ namespace InertialTracking {
         void filter_yaw_pitch_roll(float yaw, float pitch, float roll, 
                                    float *yaw_out, float *pitch_out, float *roll_out);
         void filter_imu_readings();
-        void get_yaw_pitch_roll(float *yaw_arg, float *pitch_arg, float *roll_arg, bool filtered);
-
+        void get_attitude(float *yaw_arg, float *pitch_arg, float *roll_arg, float *heading_arg, float *imu_raw_vals, bool filtered);
+        float get_heading();
 
     public:
     
@@ -87,7 +90,7 @@ namespace InertialTracking {
 
         Pose(IMUDevice* dev);
 
-        void get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg, bool filter_ypr=false);
+        void get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg, float *heading_arg, float *imu_raw_vals, bool filter_ypr=false);
     };
 
     class MotionTracking {
@@ -103,7 +106,7 @@ namespace InertialTracking {
 
         MotionTracking();
         void init();
-        void get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg, bool filter_ypr);
+        void get_pose(float *yaw_arg, float *pitch_arg, float *roll_arg, float *heading_arg, float *imu_raw_vals, bool filter_ypr);
     };
 }
 

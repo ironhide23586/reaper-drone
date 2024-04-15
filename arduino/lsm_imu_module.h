@@ -41,6 +41,7 @@ namespace InertialTracking {
         void init_mpu();
         uint8_t get_device_id();
         uint8_t get_device_address();
+        bool magnetic_data_available();
         float mpu_read_data(float* mpu_gyro_xyz, float* mpu_acc_xyz, float* mag_acc_xyz, double* read_timestamp);
     };
     

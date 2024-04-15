@@ -33,7 +33,8 @@ initialize_mcu();
 
 }
 #ifdef MASTER_NANO
-float y, p, r;
+float y, p, r, h;
+float imu_raw_vals[9];
 #endif
 
 #ifdef SLAVE_NANO_0
@@ -65,13 +66,21 @@ void loop() {
 #endif
 
 #ifdef MASTER_NANO
-  motion_tracker->get_pose(&y, &p, &r, false);
+  motion_tracker->get_pose(&y, &p, &r, &h, &imu_raw_vals[0], false);
   Serial.print(y);
   Serial.print("\t");
   Serial.print(p);
   Serial.print("\t");
   Serial.print(r);
+  Serial.print("\t");
+  Serial.print(h);
+  Serial.print("\t<->");
+  for (int i = 0; i < 9; i++) {
+    Serial.print("\t");
+    Serial.print(imu_raw_vals[i]);
+  }
   Serial.print("\n");
+  // stall();
 #endif
 }
 
