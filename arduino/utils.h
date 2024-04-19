@@ -25,6 +25,8 @@ inline void stall() {
 
 
 inline void initialize_mcu() {
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
 #ifdef MASTER_NANO
   Serial.begin(BAUD_RATE);
 #endif
@@ -42,6 +44,7 @@ inline void initialize_mcu() {
 #ifdef SLAVE_NANO_0
   // Serial.print(TFMINI_BAUDRATE);
 #endif
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 

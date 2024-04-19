@@ -211,8 +211,8 @@ namespace InertialTracking {
 
             Pose::yaw_tmp = GYRO_WEIGHT * (Pose::yaw_tmp) + (1. - GYRO_WEIGHT) * d;
 
-            if (Pose::yaw_tmp < 0) yaw_final = Pose::yaw_tmp + 360;
-            if (Pose::yaw_tmp > 360) yaw_final = Pose::yaw_tmp - 360;
+            // if (Pose::yaw_tmp < 0) yaw_final = Pose::yaw_tmp + 360;
+            // if (Pose::yaw_tmp > 360) yaw_final = Pose::yaw_tmp - 360;
 
             for (int i = 0; i < 3; i++) {
                 imu_raw_vals[i + 6] = Pose::mag_xyz[i];
