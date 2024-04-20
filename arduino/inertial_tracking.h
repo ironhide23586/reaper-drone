@@ -52,8 +52,8 @@ namespace InertialTracking {
         float gyro_xyz[3], acc_xyz[3], mag_xyz[3];
         float gyro_drift[3] = {0};
         float acc_drift[3] = {0};
-        // float mag_drift[3] = {0};
-        // float mag_drift_[3] = {0};
+        // float ypr_offset[3] = {0};
+        bool ypr_offset_recorded = false;
         float gyro_w[2] = {GYRO_WEIGHT, GYRO_WEIGHT};
 
         float accAngleX, accAngleY;

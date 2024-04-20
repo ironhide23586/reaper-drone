@@ -196,6 +196,8 @@ namespace InertialTracking {
                 Serial.print("\t");
                 Serial.print(Pose::acc_drift[2], 9);
                 Serial.print("\n");
+                digitalWrite(INIT_COMPLETE_LED, HIGH);
+                digitalWrite(INIT_ONGOING_LED, LOW);
             }
             // delay(1);
             Pose::calibration_counter++;
@@ -219,8 +221,8 @@ namespace InertialTracking {
             }
         }
         *yaw_arg = yaw_final;
-        *pitch_arg = Pose::pitch_tmp;
-        *roll_arg = Pose::roll_tmp;   
+        *pitch_arg = Pose::pitch_tmp * .68 + 8;
+        *roll_arg = Pose::roll_tmp + 4;   
 
         *heading_arg = Pose::heading_tmp;
 

@@ -16,6 +16,11 @@
 #define NUM_CALIBRATION_SAMPLES 2000
 #define PI 3.1415926535897932384626433832795f
 
+#define PITCH_LED 11
+#define ROLL_LED 3
+#define INIT_COMPLETE_LED 12
+#define INIT_ONGOING_LED 4
+
 
 inline void stall() {
   while(1) {

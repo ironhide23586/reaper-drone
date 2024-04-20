@@ -28,14 +28,14 @@ namespace Actuator {
     };
 
     class PropellerSet {
-    // 9 -> Rear-Right
-    // 10 -> Front-Right
-    // 6 -> Rear-Left
-    // 5 -> Front-Left
+    // 6 -> Rear-Right
+    // 5 -> Front-Right
+    // 10 -> Rear-Left
+    // 9 -> Front-Left
     private:
 
         uint8_t num_props = 4;
-        int prop_pin_map[4] = {9, 10, 6, 5};
+        int prop_pin_map[4] = {6, 5, 10, 9};
         Propeller *prop_set[4];
         Servo *escs[4];
         void init();

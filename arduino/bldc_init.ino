@@ -2,6 +2,7 @@
 // #define SLAVE_NANO_0
 
 #ifdef MASTER_NANO
+#include <Servo.h>
 #include "actuator.h"
 #include "inertial_tracking.h"
 using namespace InertialTracking;
@@ -23,6 +24,10 @@ void wait_loop(int num_ticks) {
 InertialTracking::MotionTracking* motion_tracker = new InertialTracking::MotionTracking();
 Actuator::PropellerSet* props;
 
+int pitch_led = 11;
+int roll_led = 3;
+int init_complete_led = 12;
+int init_ongoing_led = 4;
 
 // 9 -> Rear-Right
 // 10 -> Front-Right
@@ -41,9 +46,16 @@ Perception::Lidar* alt_sensor;
 
 
 void setup() {
+  pinMode(pitch_led, OUTPUT);
+  pinMode(init_complete_led, OUTPUT);
+  pinMode(init_ongoing_led, OUTPUT);
+
+  digitalWrite(init_complete_led, LOW);
+  digitalWrite(init_ongoing_led, HIGH);
   initialize_mcu();
+
   Serial.println("POWER ON THE ESCs NOW!");
-  wait_loop(10);
+  wait_loop(3);
   Serial.println("ARMING NOW...");
 
 #ifdef MASTER_NANO
@@ -58,8 +70,6 @@ void setup() {
   alt_sensor = new Perception::Lidar();
   Wire.begin(LIDAR_SLAVE_I2C_ADDRESS);
 #endif
-
-
 }
 
 #ifdef MASTER_NANO
@@ -107,17 +117,17 @@ void loop() {
   motion_tracker->get_pose(&y, &p, &r, &h, &imu_raw_vals[0], false);
 
   
-  float delta_t_rr_pitch = max(p / 60, 0);
-  float delta_t_fr_pitch = max(-p / 60, 0);
-  float delta_t_rl_pitch = max(p / 60, 0);
-  float delta_t_fl_pitch = max(-p / 60, 0);
+  float delta_t_rr_pitch = max(p / 50, 0);
+  float delta_t_fr_pitch = max(-p / 50, 0);
+  float delta_t_rl_pitch = max(p / 50, 0);
+  float delta_t_fl_pitch = max(-p / 50, 0);
  
-  float delta_t_rr_roll = max(r / 60, 0);
-  float delta_t_fr_roll = max(r / 35, 0);
-  float delta_t_rl_roll = max(-r / 35, 0);
-  float delta_t_fl_roll = max(-r / 35, 0);
+  float delta_t_rr_roll = max(r / 50, 0);
+  float delta_t_fr_roll = max(r / 50, 0);
+  float delta_t_rl_roll = max(-r / 50, 0);
+  float delta_t_fl_roll = max(-r / 50, 0);
 
-  float blend_coeff = .6;
+  float blend_coeff = 1.;
   
   t_rr = (1. - blend_coeff) * t_rr + blend_coeff * ((delta_t_rr_pitch + delta_t_rr_roll) / 2.);
   t_fr = (1. - blend_coeff) * t_fr + blend_coeff * ((delta_t_fr_pitch + delta_t_fr_roll) / 2.);
@@ -130,6 +140,8 @@ void loop() {
   props->drive_throttle_rear_left(t_rl);
   props->drive_throttle_front_left(t_fl);
 
+  analogWrite(pitch_led, abs(min(p / 50., 1.) * 255));
+  analogWrite(roll_led, abs(min(r / 50., 1.) * 255));
 
   Serial.print(y);
   Serial.print("\t");
