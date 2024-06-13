@@ -8,6 +8,8 @@
 using namespace InertialTracking;
 using namespace Actuator;
 
+#define TEST_MS 4000
+
 
 void wait_loop(int num_ticks) {
   for (int i = num_ticks; i > 0; i--) {
@@ -24,10 +26,13 @@ void wait_loop(int num_ticks) {
 InertialTracking::MotionTracking* motion_tracker = new InertialTracking::MotionTracking();
 Actuator::PropellerSet* props;
 
+
 int pitch_led = 11;
 int roll_led = 3;
 int init_complete_led = 12;
 int init_ongoing_led = 4;
+
+volatile bool dummy_trigger = false;
 
 // 9 -> Rear-Right
 // 10 -> Front-Right
@@ -43,27 +48,147 @@ Perception::Lidar* alt_sensor;
 #endif
 
 
+void safety_stall() {
+  if (!dummy_trigger) dummy_trigger = true;
+  else {
+    props->brake();
+    digitalWrite(INIT_ONGOING_LED, HIGH);
+    digitalWrite(INIT_COMPLETE_LED, HIGH);
+    analogWrite(roll_led, 255);
+    analogWrite(pitch_led, 255);
+    Serial.println("Killswitch triggered.");
+    props->drive_enabled = false;
+  }
+}
+
 
 
 void setup() {
-  pinMode(pitch_led, OUTPUT);
-  pinMode(init_complete_led, OUTPUT);
-  pinMode(init_ongoing_led, OUTPUT);
+  pinMode(PITCH_LED, OUTPUT);
+  pinMode(INIT_COMPLETE_LED, OUTPUT);
+  pinMode(INIT_ONGOING_LED, OUTPUT);
+  pinMode(STATUS_PIN, INPUT);
 
-  digitalWrite(init_complete_led, LOW);
-  digitalWrite(init_ongoing_led, HIGH);
+  digitalWrite(INIT_COMPLETE_LED, LOW);
+  digitalWrite(INIT_ONGOING_LED, HIGH);
   initialize_mcu();
 
-  Serial.println("POWER ON THE ESCs NOW!");
-  wait_loop(3);
+  Serial.println("WAITING TO POWER ON THE ESCs NOW!");
+  while(digitalRead(STATUS_PIN) == 0) {
+    digitalWrite(INIT_ONGOING_LED, HIGH);
+    delay(20);
+    digitalWrite(INIT_COMPLETE_LED, LOW);
+    delay(10);
+    analogWrite(roll_led, 255);
+    delay(5);
+    analogWrite(pitch_led, 0);
+    delay(1);
+
+    digitalWrite(INIT_ONGOING_LED, LOW);
+    delay(20);
+    digitalWrite(INIT_COMPLETE_LED, HIGH);
+    delay(10);
+    analogWrite(roll_led, 0);
+    delay(5);
+    analogWrite(pitch_led, 255);
+    delay(1);
+  }
+  analogWrite(roll_led, 0);
+  analogWrite(pitch_led, 0);
+  digitalWrite(INIT_COMPLETE_LED, LOW);
+  digitalWrite(INIT_ONGOING_LED, HIGH);
+  delay(500);
+  pinMode(STATUS_PIN, INPUT);
+
   Serial.println("ARMING NOW...");
 
 #ifdef MASTER_NANO
   props = new Actuator::PropellerSet();
+
   Wire.begin(IMU_MASTER_I2C_ADDRESS);
   // Wire.onReceive(receiveEvent);
   Wire.setClock(I2C_FREQUENCY_HZ);
   motion_tracker->init();
+
+  // attachInterrupt(digitalPinToInterrupt(STATUS_PIN), safety_stall, RISING);
+  int cnt_idx = 0;
+
+  analogWrite(pitch_led, 80);
+  props->actuate_force_torques(0, 0, .5, 0);
+  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+    delay(1);
+    props->safety_check();
+  }
+  props->brake();
+  analogWrite(pitch_led, 0);
+
+  analogWrite(roll_led, 255);
+  delay(4000);
+  analogWrite(roll_led, 0);
+
+  analogWrite(pitch_led, 140);
+  props->actuate_force_torques(0, 0, 1., 0);
+  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+    delay(1);
+    props->safety_check();
+  }
+  props->brake();
+  analogWrite(pitch_led, 0);
+
+  analogWrite(roll_led, 255);
+  delay(4000);
+  analogWrite(roll_led, 0);
+
+  analogWrite(pitch_led, 200);
+  props->actuate_force_torques(0, 0, 1.5, 0);
+  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+    delay(1);
+    props->safety_check();
+  }
+  props->brake();
+  analogWrite(pitch_led, 0);
+
+  analogWrite(roll_led, 255);
+  delay(4000);
+  analogWrite(roll_led, 0);
+
+  analogWrite(pitch_led, 255);
+  props->actuate_force_torques(0, 0, 2., 0);
+  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+    delay(1);
+    props->safety_check();
+  }
+  props->brake();
+  analogWrite(pitch_led, 0);
+
+  analogWrite(roll_led, 255);
+  delay(4000);
+  analogWrite(roll_led, 0);
+
+  analogWrite(pitch_led, 255);
+  props->actuate_force_torques(0, 0, 2.5, 0);
+  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+    delay(1);
+    props->safety_check();
+  }
+  props->brake();
+  analogWrite(pitch_led, 0);
+
+  analogWrite(roll_led, 255);
+  delay(4000);
+  analogWrite(roll_led, 0);
+
+  analogWrite(pitch_led, 255);
+  props->actuate_force_torques(0, 0, 3, 0);
+  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+    delay(1);
+    props->safety_check();
+  }
+  props->brake();
+  analogWrite(pitch_led, 0);
+
+
+  // stall();
 #endif
 
 #ifdef SLAVE_NANO_0
@@ -115,30 +240,30 @@ void loop() {
   // props->drive_throttle_front_left(t_val);
   // // stall();
   motion_tracker->get_pose(&y, &p, &r, &h, &imu_raw_vals[0], false);
-
   
-  float delta_t_rr_pitch = max(p / 50, 0);
-  float delta_t_fr_pitch = max(-p / 50, 0);
-  float delta_t_rl_pitch = max(p / 50, 0);
-  float delta_t_fl_pitch = max(-p / 50, 0);
+  
+  // float delta_t_rr_pitch = max(p / 50, 0);
+  // float delta_t_fr_pitch = max(-p / 50, 0);
+  // float delta_t_rl_pitch = max(p / 50, 0);
+  // float delta_t_fl_pitch = max(-p / 50, 0);
  
-  float delta_t_rr_roll = max(r / 50, 0);
-  float delta_t_fr_roll = max(r / 50, 0);
-  float delta_t_rl_roll = max(-r / 50, 0);
-  float delta_t_fl_roll = max(-r / 50, 0);
+  // float delta_t_rr_roll = max(r / 50, 0);
+  // float delta_t_fr_roll = max(r / 50, 0);
+  // float delta_t_rl_roll = max(-r / 50, 0);
+  // float delta_t_fl_roll = max(-r / 50, 0);
 
-  float blend_coeff = 1.;
+  // float blend_coeff = 1.;
   
-  t_rr = (1. - blend_coeff) * t_rr + blend_coeff * ((delta_t_rr_pitch + delta_t_rr_roll) / 2.);
-  t_fr = (1. - blend_coeff) * t_fr + blend_coeff * ((delta_t_fr_pitch + delta_t_fr_roll) / 2.);
-  t_rl = (1. - blend_coeff) * t_rl + blend_coeff * ((delta_t_rl_pitch + delta_t_rl_roll) / 2.);
-  t_fl = (1. - blend_coeff) * t_fl + blend_coeff * ((delta_t_fl_pitch + delta_t_fl_roll) / 2.);
+  // t_rr = (1. - blend_coeff) * t_rr + blend_coeff * ((delta_t_rr_pitch + delta_t_rr_roll) / 2.);
+  // t_fr = (1. - blend_coeff) * t_fr + blend_coeff * ((delta_t_fr_pitch + delta_t_fr_roll) / 2.);
+  // t_rl = (1. - blend_coeff) * t_rl + blend_coeff * ((delta_t_rl_pitch + delta_t_rl_roll) / 2.);
+  // t_fl = (1. - blend_coeff) * t_fl + blend_coeff * ((delta_t_fl_pitch + delta_t_fl_roll) / 2.);
 
 
-  props->drive_throttle_rear_right(t_rr);
-  props->drive_throttle_front_right(t_fr);
-  props->drive_throttle_rear_left(t_rl);
-  props->drive_throttle_front_left(t_fl);
+  // props->drive_throttle_rear_right(t_rr);
+  // props->drive_throttle_front_right(t_fr);
+  // props->drive_throttle_rear_left(t_rl);
+  // props->drive_throttle_front_left(t_fl);
 
   analogWrite(pitch_led, abs(min(p / 50., 1.) * 255));
   analogWrite(roll_led, abs(min(r / 50., 1.) * 255));
@@ -152,14 +277,14 @@ void loop() {
   Serial.print(h);
   Serial.print("\t<->");
 
-  Serial.print(t_rr);
-  Serial.print("\t");
-  Serial.print(t_fr);
-  Serial.print("\t");
-  Serial.print(t_rl);
-  Serial.print("\t");
-  Serial.print(t_fl);
-  Serial.print("\t<->");
+  // Serial.print(t_rr);
+  // Serial.print("\t");
+  // Serial.print(t_fr);
+  // Serial.print("\t");
+  // Serial.print(t_rl);
+  // Serial.print("\t");
+  // Serial.print(t_fl);
+  // Serial.print("\t<->");
 
   for (int i = 0; i < 9; i++) {
     Serial.print("\t");

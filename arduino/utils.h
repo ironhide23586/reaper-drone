@@ -9,6 +9,13 @@
 #define IMU_MASTER_I2C_ADDRESS 0x00
 #define LIDAR_SLAVE_I2C_ADDRESS 0x01
 
+#define HIGH_THROTTLE_PWM_VAL 2000
+#define LOW_THROTTLE_PWM_VAL 1000
+#define SAFETY_CAP_PWM_VAL 1600
+
+#define STATUS_PIN 2
+
+#define G_VAL 9.8f
 #define TFMINI_BAUDRATE   115200
 #define BAUD_RATE 250000
 #define I2C_FREQUENCY_HZ 400000
@@ -59,11 +66,19 @@ inline void I2CsendToMaster(uint8_t d) {
   Wire.endTransmission(true);
 }
 
+
 inline void I2CsendToMaster(uint16_t d) {
   Wire.beginTransmission(IMU_MASTER_I2C_ADDRESS);
   Wire.write(d);
   Wire.endTransmission(true);
 }
+
+
+// inline void cross_product(float a, float b, float c, float x, float y, float z, float *res_x, float *res_y) {
+//   *res_x = (b * z) - (c * y);
+//   *res_y = (c * x) - (a * z);
+//   // *res_z = (a * y) - (b * x);
+// }
 
 
 inline void I2Cread(uint8_t Address, uint8_t Register, uint8_t Nbytes, uint8_t* Data)

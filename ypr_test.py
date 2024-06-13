@@ -3,24 +3,6 @@
 import numpy as np
 
 
-def get_force_normal_plane_angle(r, R, t, v_l, v_w, k):
-    jx = (r * (t[3] - t[0]) + R * (t[2] - t[1]))
-    jy = (r * (t[3] + t[0]) - R * (t[2] + t[1]))
-    jz = ((k[1] * t[1] + k[3] * t[3]) - (k[0] * t[0] + k[2] * t[2]))
-    j = np.array([jx, jy, jz])
-    e = np.array([0, 0, 1])
-    n = np.cross(j, e)
-    angle = 0
-    tr = np.sum(t)
-    fx = -n[0] / v_w
-    fy = -n[1] / v_l
-    fz = np.sqrt(tr**2 - np.square(fx) - np.square(fy))
-    if np.max(np.abs(n)) > 0:
-        angle = np.arctan2(n[0], n[1])
-        angle = -np.rad2deg(angle)
-    return angle, [fx, fy, fz], jz
-
-
 def torques2forces(j, v_l, v_w):
     e = np.array([0, 0, 1])
     n = np.cross(j[:3], e)
@@ -32,6 +14,13 @@ def torques2forces(j, v_l, v_w):
     return np.array([fx, fy, fz])
 
 
+def cross_prod(p, q):
+    a, b, c = p
+    x, y, z = q
+    r = [((b * z) - (c * y)), ((c * x) - (a * z)), ((a * y) - (b * x))]
+    return np.array(r)
+
+
 def forces2torques(f, v_l, v_w):
     fx, fy, fz = f
     n = np.zeros(3)
@@ -39,6 +28,7 @@ def forces2torques(f, v_l, v_w):
     n[1] = -(fy * v_l)
     e = np.array([0, 0, -1])
     jx, jy, _ = np.cross(n, e)
+    # jx_, jy_, _ = cross_prod(n, e)
     return np.array([jx, jy])
 
 
@@ -70,19 +60,33 @@ def forces_yaw_torque_to_thrusts(f_xyz, yaw_torque, t_mat, v_l, v_w):
 
 
 if __name__ == '__main__':
-    thrusts = np.array([.64, .64, .1, .9])
+
+    # 1024 -> 25g, 21g | 23g ; 51.0204081632653 g ;  +28.0204081632653 g
+    # 1048 -> 122g, 113g | 117.5g ; 102.0408163265306 g ; -15.459183673469397 g
+    # 1075 -> 183g, 190g | 186.5 ; 153.0612244897959 g ; -33.438775510204096 g
+    # 1100 -> 264g, 256g | 260 ; 204.0816326530612 g ; -55.918367346938794 g
+
+
+    thrusts = np.array([0.27091882, 0.20020814,  60.51046997,  60.4397593])
     thrust_torque_coeffs = np.array([.3, .3, .3, .3])
-    radius_front = 1
-    radius_rear = 1
-    angle_front_deg = 90
+
+    radius_front = .12
+    radius_rear = .14
+    angle_front_deg = 120
+    angle_rear_deg = 90
+
+    # radius_front = .2556
+    # radius_rear = .2556
+    # angle_front_deg = 112.5520925919324
+    # angle_rear_deg = 112.5520925919324
 
     thrust_torque_coeffs[[0, 3]] *= radius_front
     thrust_torque_coeffs[[1, 2]] *= radius_rear
-    angle_side_deg = 180 - angle_front_deg
+
     length = (radius_front * np.cos(np.deg2rad(angle_front_deg / 2))
-              + radius_rear * np.cos(np.deg2rad(angle_front_deg / 2)))
+              + radius_rear * np.cos(np.deg2rad(angle_rear_deg / 2)))
     width_front = 2 * radius_front * np.sin(np.deg2rad(angle_front_deg / 2))
-    width_rear = 2 * radius_rear * np.sin(np.deg2rad(angle_front_deg / 2))
+    width_rear = 2 * radius_rear * np.sin(np.deg2rad(angle_rear_deg / 2))
     width = (width_rear + width_front) / 2.
 
     t_mat = get_tmat(radius_front, radius_rear, thrust_torque_coeffs)
@@ -92,4 +96,10 @@ if __name__ == '__main__':
     print(t_pred, f_xyz)
     print(np.max(np.abs(t_pred - thrusts)))
 
+
+    f_xyz = [0, 0, 1.5 * 9.8]
+    tq = 0
+    t_pred = forces_yaw_torque_to_thrusts(f_xyz, tq, t_mat, length, width)
+    t_am = t_pred * 175
+    print(t_pred, 'N,', t_am, 'rad/s')
     k = 0
