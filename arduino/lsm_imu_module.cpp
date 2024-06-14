@@ -27,7 +27,7 @@ namespace InertialTracking {
             stall();
         }
 
-        I2CwriteByte(MPU_ADDRESS, CTRL_REG1_G, 0x78); // 119 Hz, 2000 dps, 16 Hz BW
+        I2CwriteByte(MPU_ADDRESS, CTRL_REG1_G, 0x78); // 119 Hz, 2000 dps, 16 Hz BW TODO: Try reducing frequency
         I2CwriteByte(MPU_ADDRESS, CTRL_REG6_XL, 0x78); // 119 Hz, 8g, 408 Hz antialiasing filter bandwidth
         // I2CwriteByte(MPU_ADDRESS, CTRL_REG7_XL, 0x44); // 0 1 0 0 0 1 0 0
 

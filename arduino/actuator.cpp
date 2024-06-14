@@ -44,10 +44,10 @@ namespace Actuator {
         int pwm_val = (throttle_power * (HIGH_THROTTLE_PWM_VAL - LOW_THROTTLE_PWM_VAL)) + LOW_THROTTLE_PWM_VAL;
         if (pwm_val > SAFETY_CAP_PWM_VAL) pwm_val = SAFETY_CAP_PWM_VAL;
         throttle_power = (float) (pwm_val - LOW_THROTTLE_PWM_VAL) / (HIGH_THROTTLE_PWM_VAL - LOW_THROTTLE_PWM_VAL);
-        Serial.print("Driving motor at ");
-        Serial.print(throttle_power * 100., 6);
-        Serial.print("% power with pwm val ");
-        Serial.println(pwm_val);
+        // Serial.print("Driving motor at ");
+        // Serial.print(throttle_power * 100., 6);
+        // Serial.print("% power with pwm val ");
+        // Serial.println(pwm_val);
         Propeller::esc.writeMicroseconds(pwm_val);
     }
 
@@ -93,6 +93,7 @@ namespace Actuator {
         digitalWrite(LED_BUILTIN, HIGH);
         delay(100);
         digitalWrite(LED_BUILTIN, LOW);
+        delay(2000);
         Serial.println("-----------------Calibrated-----------------\n");
     }
 
@@ -142,14 +143,14 @@ namespace Actuator {
         t_rear_left = max(((1.78571429f * torque_x) + (-1.92307692f * torque_y) + (-5.95238095f * yaw_torque) + (0.23076923f * f_xyz_norm)) / 5.0f, 0);
         t_front_left = max(((2.08333333f * torque_x) + (1.92307692f * torque_y) + (6.94444444f * yaw_torque) + (0.26923077f * f_xyz_norm)) / 5.0f, 0);
 
-        Serial.print(t_rear_right, 6);
-        Serial.print("\t");
-        Serial.print(t_front_right, 6);
-        Serial.print("\t");
-        Serial.print(t_rear_left, 6);
-        Serial.print("\t");
-        Serial.print(t_front_left, 6);
-        Serial.print("\n");
+        // Serial.print(t_rear_right, 6);
+        // Serial.print("\t");
+        // Serial.print(t_front_right, 6);
+        // Serial.print("\t");
+        // Serial.print(t_rear_left, 6);
+        // Serial.print("\t");
+        // Serial.print(t_front_left, 6);
+        // Serial.print("\n");
 
         if (!safety_check()) return;
         prop_set[0]->drive_throttle(t_rear_right);

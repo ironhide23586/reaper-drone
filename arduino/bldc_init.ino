@@ -113,6 +113,22 @@ void setup() {
   // attachInterrupt(digitalPinToInterrupt(STATUS_PIN), safety_stall, RISING);
   int cnt_idx = 0;
 
+  analogWrite(pitch_led, 255);
+  props->actuate_force_torques(0, 0, 100, 0);
+  for (cnt_idx = 0; cnt_idx < 200; cnt_idx++) {
+    delay(1);
+    props->safety_check();
+  }
+  props->brake();
+  analogWrite(pitch_led, 0);
+
+  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+    analogWrite(roll_led, cnt_idx % 255);
+    props->safety_check();
+    delay(2);
+    analogWrite(roll_led, 0);
+  }
+
   analogWrite(pitch_led, 80);
   props->actuate_force_torques(0, 0, .5, 0);
   for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
@@ -122,9 +138,12 @@ void setup() {
   props->brake();
   analogWrite(pitch_led, 0);
 
-  analogWrite(roll_led, 255);
-  delay(4000);
-  analogWrite(roll_led, 0);
+  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+    analogWrite(roll_led, cnt_idx % 255);
+    props->safety_check();
+    delay(2);
+    analogWrite(roll_led, 0);
+  }
 
   analogWrite(pitch_led, 140);
   props->actuate_force_torques(0, 0, 1., 0);
@@ -135,9 +154,12 @@ void setup() {
   props->brake();
   analogWrite(pitch_led, 0);
 
-  analogWrite(roll_led, 255);
-  delay(4000);
-  analogWrite(roll_led, 0);
+  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+    analogWrite(roll_led, cnt_idx % 255);
+    props->safety_check();
+    delay(2);
+    analogWrite(roll_led, 0);
+  }
 
   analogWrite(pitch_led, 200);
   props->actuate_force_torques(0, 0, 1.5, 0);
@@ -148,9 +170,12 @@ void setup() {
   props->brake();
   analogWrite(pitch_led, 0);
 
-  analogWrite(roll_led, 255);
-  delay(4000);
-  analogWrite(roll_led, 0);
+  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+    analogWrite(roll_led, cnt_idx % 255);
+    props->safety_check();
+    delay(2);
+    analogWrite(roll_led, 0);
+  }
 
   analogWrite(pitch_led, 255);
   props->actuate_force_torques(0, 0, 2., 0);
@@ -161,9 +186,12 @@ void setup() {
   props->brake();
   analogWrite(pitch_led, 0);
 
-  analogWrite(roll_led, 255);
-  delay(4000);
-  analogWrite(roll_led, 0);
+  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+    analogWrite(roll_led, cnt_idx % 255);
+    props->safety_check();
+    delay(2);
+    analogWrite(roll_led, 0);
+  }
 
   analogWrite(pitch_led, 255);
   props->actuate_force_torques(0, 0, 2.5, 0);
@@ -174,9 +202,12 @@ void setup() {
   props->brake();
   analogWrite(pitch_led, 0);
 
-  analogWrite(roll_led, 255);
-  delay(4000);
-  analogWrite(roll_led, 0);
+  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+    analogWrite(roll_led, cnt_idx % 255);
+    props->safety_check();
+    delay(2);
+    analogWrite(roll_led, 0);
+  }
 
   analogWrite(pitch_led, 255);
   props->actuate_force_torques(0, 0, 3, 0);
@@ -230,6 +261,27 @@ void loop() {
   // cnt++;
   delay(100);
 #endif
+
+
+// Driving motor at 2.300000% power with pwm val 1023
+// Driving motor at 2.600000% power with pwm val 1026
+// Driving motor at 2.300000% power with pwm val 1023
+// Driving motor at 2.600000% power with pwm val 1026
+// Braking.
+// Driving motor at 4.600000% power with pwm val 1046
+// Driving motor at 5.300000% power with pwm val 1053
+// Driving motor at 4.600000% power with pwm val 1046
+// Driving motor at 5.300000% power with pwm val 1053
+// Braking.
+// Driving motor at 6.900000% power with pwm val 1069
+// Driving motor at 8.000000% power with pwm val 1080
+// Driving motor at 6.900000% power with pwm val 1069
+// Driving motor at 8.000000% power with pwm val 1080
+// Braking.
+// Driving motor at 9.200000% power with pwm val 1092
+// Driving motor at 10.700000% power with pwm val 1107
+// Driving motor at 9.200000% power with pwm val 1092
+
 
 #ifdef MASTER_NANO
   // float t_val = .1;
