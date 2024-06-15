@@ -45,9 +45,13 @@ namespace InertialTracking {
     private:
 
         int calibration_counter = 1;
+        int calibration_counter_secondary = 1;
         float yaw_tmp = 0, pitch_tmp, roll_tmp, heading_tmp;
         float num_tmp = 0, den_tmp = 0;
         float yaw_offset;
+        float yaw_arg_offset = 0;
+        float pitch_arg_offset = 0;
+        float roll_arg_offset = 0;
 
         float gyro_xyz[3], acc_xyz[3], mag_xyz[3];
         float gyro_drift[3] = {0};

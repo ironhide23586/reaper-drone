@@ -111,112 +111,112 @@ void setup() {
   motion_tracker->init();
 
   // attachInterrupt(digitalPinToInterrupt(STATUS_PIN), safety_stall, RISING);
-  int cnt_idx = 0;
+  // int cnt_idx = 0;
 
-  analogWrite(pitch_led, 255);
-  props->actuate_force_torques(0, 0, 100, 0);
-  for (cnt_idx = 0; cnt_idx < 200; cnt_idx++) {
-    delay(1);
-    props->safety_check();
-  }
-  props->brake();
-  analogWrite(pitch_led, 0);
+  // analogWrite(pitch_led, 255);
+  // props->actuate_force_torques(0, 0, 100, 0);
+  // for (cnt_idx = 0; cnt_idx < 50; cnt_idx++) {
+  //   delay(1);
+  //   props->safety_check();
+  // }
+  // props->brake();
+  // analogWrite(pitch_led, 0);
 
-  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
-    analogWrite(roll_led, cnt_idx % 255);
-    props->safety_check();
-    delay(2);
-    analogWrite(roll_led, 0);
-  }
+  // for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+  //   analogWrite(roll_led, cnt_idx % 255);
+  //   props->safety_check();
+  //   delay(2);
+  //   analogWrite(roll_led, 0);
+  // }
 
-  analogWrite(pitch_led, 80);
-  props->actuate_force_torques(0, 0, .5, 0);
-  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
-    delay(1);
-    props->safety_check();
-  }
-  props->brake();
-  analogWrite(pitch_led, 0);
+  // analogWrite(pitch_led, 80);
+  // props->actuate_force_torques(0, 0, .5, 0);
+  // for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+  //   delay(1);
+  //   props->safety_check();
+  // }
+  // props->brake();
+  // analogWrite(pitch_led, 0);
 
-  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
-    analogWrite(roll_led, cnt_idx % 255);
-    props->safety_check();
-    delay(2);
-    analogWrite(roll_led, 0);
-  }
+  // for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+  //   analogWrite(roll_led, cnt_idx % 255);
+  //   props->safety_check();
+  //   delay(2);
+  //   analogWrite(roll_led, 0);
+  // }
 
-  analogWrite(pitch_led, 140);
-  props->actuate_force_torques(0, 0, 1., 0);
-  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
-    delay(1);
-    props->safety_check();
-  }
-  props->brake();
-  analogWrite(pitch_led, 0);
+  // analogWrite(pitch_led, 140);
+  // props->actuate_force_torques(0, 0, 1., 0);
+  // for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+  //   delay(1);
+  //   props->safety_check();
+  // }
+  // props->brake();
+  // analogWrite(pitch_led, 0);
 
-  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
-    analogWrite(roll_led, cnt_idx % 255);
-    props->safety_check();
-    delay(2);
-    analogWrite(roll_led, 0);
-  }
+  // for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+  //   analogWrite(roll_led, cnt_idx % 255);
+  //   props->safety_check();
+  //   delay(2);
+  //   analogWrite(roll_led, 0);
+  // }
 
-  analogWrite(pitch_led, 200);
-  props->actuate_force_torques(0, 0, 1.5, 0);
-  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
-    delay(1);
-    props->safety_check();
-  }
-  props->brake();
-  analogWrite(pitch_led, 0);
+  // analogWrite(pitch_led, 200);
+  // props->actuate_force_torques(0, 0, 1.5, 0);
+  // for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+  //   delay(1);
+  //   props->safety_check();
+  // }
+  // props->brake();
+  // analogWrite(pitch_led, 0);
 
-  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
-    analogWrite(roll_led, cnt_idx % 255);
-    props->safety_check();
-    delay(2);
-    analogWrite(roll_led, 0);
-  }
+  // for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+  //   analogWrite(roll_led, cnt_idx % 255);
+  //   props->safety_check();
+  //   delay(2);
+  //   analogWrite(roll_led, 0);
+  // }
 
-  analogWrite(pitch_led, 255);
-  props->actuate_force_torques(0, 0, 2., 0);
-  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
-    delay(1);
-    props->safety_check();
-  }
-  props->brake();
-  analogWrite(pitch_led, 0);
+  // analogWrite(pitch_led, 255);
+  // props->actuate_force_torques(0, 0, 2., 0);
+  // for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+  //   delay(1);
+  //   props->safety_check();
+  // }
+  // props->brake();
+  // analogWrite(pitch_led, 0);
 
-  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
-    analogWrite(roll_led, cnt_idx % 255);
-    props->safety_check();
-    delay(2);
-    analogWrite(roll_led, 0);
-  }
+  // for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+  //   analogWrite(roll_led, cnt_idx % 255);
+  //   props->safety_check();
+  //   delay(2);
+  //   analogWrite(roll_led, 0);
+  // }
 
-  analogWrite(pitch_led, 255);
-  props->actuate_force_torques(0, 0, 2.5, 0);
-  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
-    delay(1);
-    props->safety_check();
-  }
-  props->brake();
-  analogWrite(pitch_led, 0);
+  // analogWrite(pitch_led, 255);
+  // props->actuate_force_torques(0, 0, 2.5, 0);
+  // for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+  //   delay(1);
+  //   props->safety_check();
+  // }
+  // props->brake();
+  // analogWrite(pitch_led, 0);
 
-  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
-    analogWrite(roll_led, cnt_idx % 255);
-    props->safety_check();
-    delay(2);
-    analogWrite(roll_led, 0);
-  }
+  // for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+  //   analogWrite(roll_led, cnt_idx % 255);
+  //   props->safety_check();
+  //   delay(2);
+  //   analogWrite(roll_led, 0);
+  // }
 
-  analogWrite(pitch_led, 255);
-  props->actuate_force_torques(0, 0, 3, 0);
-  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
-    delay(1);
-    props->safety_check();
-  }
-  props->brake();
-  analogWrite(pitch_led, 0);
+  // analogWrite(pitch_led, 255);
+  // props->actuate_force_torques(0, 0, 3, 0);
+  // for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+  //   delay(1);
+  //   props->safety_check();
+  // }
+  // props->brake();
+  // analogWrite(pitch_led, 0);
 
 
   // stall();

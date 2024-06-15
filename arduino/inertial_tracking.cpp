@@ -19,7 +19,7 @@ namespace InertialTracking {
             // MotionTracking::warmup();
             MotionTracking::pose->currentTime = micros();
             Serial.println("Measuring Gyro Drift.");
-            for (int i = 0; i < NUM_CALIBRATION_SAMPLES; i++) {
+            for (int i = 0; i < NUM_CALIBRATION_SAMPLES * NUM_CALIBRATION_SAMPLES_MULTIPLIER; i++) {
                 MotionTracking::pose->get_pose(yaw_arg, pitch_arg, roll_arg, heading_arg, imu_raw_vals, filter_ypr);
             }
             MotionTracking::first_sampled = true;
@@ -54,13 +54,16 @@ namespace InertialTracking {
 
         for (int i = 0; i < NUM_CALIBRATION_SAMPLES; i++) {
             IMUDevice::read_data();
+            if (i % 200 == 0) {
+                digitalWrite(INIT_ONGOING_LED, !digitalRead(INIT_ONGOING_LED));
+            }
             for (int j = 0; j < 3; j++) {
-                IMUDevice::gyro_xyz_offset[j] += IMUDevice::gyro_xyz[j];
+                IMUDevice::gyro_xyz_offset[j] = (NEW_OFFSET_WEIGHT * IMUDevice::gyro_xyz[j]) + ((1 - NEW_OFFSET_WEIGHT) * IMUDevice::gyro_xyz_offset[j]);
             }
         }
         Serial.print("Gyroscope Offset XYZ:\t");
         for (int j = 0; j < 3; j++) {
-            IMUDevice::gyro_xyz_offset[j] /= NUM_CALIBRATION_SAMPLES;
+            // IMUDevice::gyro_xyz_offset[j] /= NUM_CALIBRATION_SAMPLES;
             Serial.print(IMUDevice::gyro_xyz_offset[j]);
             Serial.print("\t");
         }
@@ -196,10 +199,15 @@ namespace InertialTracking {
                 Serial.print("\t");
                 Serial.print(Pose::acc_drift[2], 9);
                 Serial.print("\n");
-                digitalWrite(INIT_COMPLETE_LED, HIGH);
-                digitalWrite(INIT_ONGOING_LED, LOW);
+                // digitalWrite(INIT_COMPLETE_LED, HIGH);
+                // digitalWrite(INIT_ONGOING_LED, LOW);
             }
             // delay(1);
+
+            if (Pose::calibration_counter % 60 == 0) {
+                digitalWrite(INIT_ONGOING_LED, !digitalRead(INIT_ONGOING_LED));
+            }
+
             Pose::calibration_counter++;
         } else {
             Pose::pitch_tmp = GYRO_WEIGHT * (Pose::pitch_tmp + Pose::gyroAngleY) + (1. - GYRO_WEIGHT) * Pose::accAngleY;
@@ -220,9 +228,44 @@ namespace InertialTracking {
                 imu_raw_vals[i + 6] = Pose::mag_xyz[i];
             }
         }
+
         *yaw_arg = yaw_final;
-        *pitch_arg = Pose::pitch_tmp * .68 + 8;
-        *roll_arg = Pose::roll_tmp + 4;   
+        *pitch_arg = Pose::pitch_tmp * .68;// + 4;
+        *roll_arg = Pose::roll_tmp; //- 1.7;
+
+        if (Pose::calibration_counter_secondary <= NUM_CALIBRATION_SAMPLES * (NUM_CALIBRATION_SAMPLES_MULTIPLIER - 1) && Pose::calibration_counter > NUM_CALIBRATION_SAMPLES) {
+            Pose::yaw_arg_offset = (NEW_OFFSET_WEIGHT * *yaw_arg) + ((1 - NEW_OFFSET_WEIGHT) * Pose::yaw_arg_offset);
+            Pose::pitch_arg_offset = (NEW_OFFSET_WEIGHT * *pitch_arg) + ((1 - NEW_OFFSET_WEIGHT) * Pose::pitch_arg_offset);
+            Pose::roll_arg_offset = (NEW_OFFSET_WEIGHT * *roll_arg) + ((1 - NEW_OFFSET_WEIGHT) * Pose::roll_arg_offset);
+
+            if (Pose::calibration_counter_secondary % 7 == 0) {
+                digitalWrite(INIT_ONGOING_LED, !digitalRead(INIT_ONGOING_LED));
+            }
+
+            if (Pose::calibration_counter_secondary == NUM_CALIBRATION_SAMPLES * (NUM_CALIBRATION_SAMPLES_MULTIPLIER - 1)) {
+                // Pose::yaw_arg_offset /= Pose::calibration_counter_secondary;
+                // Pose::pitch_arg_offset /= Pose::calibration_counter_secondary;
+                // Pose::roll_arg_offset /= Pose::calibration_counter_secondary;
+
+                Serial.print("Pose drift (Yaw, Pitch, Roll):\t");
+
+                Serial.print(Pose::yaw_arg_offset, 9);
+                Serial.print("\t");
+                Serial.print(Pose::pitch_arg_offset, 9);
+                Serial.print("\t");
+                Serial.print(Pose::roll_arg_offset, 9);
+                Serial.print("\n");
+                // stall();
+                digitalWrite(INIT_COMPLETE_LED, HIGH);
+                digitalWrite(INIT_ONGOING_LED, LOW);
+            }
+
+            Pose::calibration_counter_secondary++;
+        } else {
+            *yaw_arg -= Pose::yaw_arg_offset;
+            *pitch_arg -= Pose::pitch_arg_offset;
+            *roll_arg -= Pose::roll_arg_offset;
+        }
 
         *heading_arg = Pose::heading_tmp;
 
