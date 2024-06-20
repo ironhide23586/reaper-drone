@@ -48,18 +48,18 @@ Perception::Lidar* alt_sensor;
 #endif
 
 
-void safety_stall() {
-  if (!dummy_trigger) dummy_trigger = true;
-  else {
-    props->brake();
-    digitalWrite(INIT_ONGOING_LED, HIGH);
-    digitalWrite(INIT_COMPLETE_LED, HIGH);
-    analogWrite(roll_led, 255);
-    analogWrite(pitch_led, 255);
-    Serial.println("Killswitch triggered.");
-    props->drive_enabled = false;
-  }
-}
+// void safety_stall() {
+//   if (!dummy_trigger) dummy_trigger = true;
+//   else {
+//     props->brake();
+//     digitalWrite(INIT_ONGOING_LED, HIGH);
+//     digitalWrite(INIT_COMPLETE_LED, HIGH);
+//     analogWrite(roll_led, 255);
+//     analogWrite(pitch_led, 255);
+//     Serial.println("Killswitch triggered.");
+//     props->drive_enabled = false;
+//   }
+// }
 
 
 
@@ -108,10 +108,9 @@ void setup() {
   Wire.begin(IMU_MASTER_I2C_ADDRESS);
   // Wire.onReceive(receiveEvent);
   Wire.setClock(I2C_FREQUENCY_HZ);
-  motion_tracker->init();
 
   // attachInterrupt(digitalPinToInterrupt(STATUS_PIN), safety_stall, RISING);
-  // int cnt_idx = 0;
+  int cnt_idx = 0;
 
   // analogWrite(pitch_led, 255);
   // props->actuate_force_torques(0, 0, 100, 0);
@@ -193,31 +192,32 @@ void setup() {
   //   analogWrite(roll_led, 0);
   // }
 
-  // analogWrite(pitch_led, 255);
-  // props->actuate_force_torques(0, 0, 2.5, 0);
-  // for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
-  //   delay(1);
-  //   props->safety_check();
-  // }
-  // props->brake();
-  // analogWrite(pitch_led, 0);
+  analogWrite(pitch_led, 255);
+  props->actuate_force_torques(0.3, 0, 2.5, 0.2);
+  for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
+    delay(1);
+    props->safety_check();
+  }
+  props->brake();
+  analogWrite(pitch_led, 0);
 
-  // for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
-  //   analogWrite(roll_led, cnt_idx % 255);
-  //   props->safety_check();
-  //   delay(2);
-  //   analogWrite(roll_led, 0);
-  // }
+  for (cnt_idx = 0; cnt_idx < 2000; cnt_idx++) {
+    analogWrite(roll_led, cnt_idx % 255);
+    props->safety_check();
+    delay(2);
+    analogWrite(roll_led, 0);
+  }
 
-  // analogWrite(pitch_led, 255);
-  // props->actuate_force_torques(0, 0, 3, 0);
-  // for (cnt_idx = 0; cnt_idx < TEST_MS; cnt_idx++) {
-  //   delay(1);
-  //   props->safety_check();
-  // }
-  // props->brake();
-  // analogWrite(pitch_led, 0);
+  analogWrite(pitch_led, 255);
+  props->actuate_force_torques(0.3, 0, 3, 0.2);
+  for (cnt_idx = 0; cnt_idx < TEST_MS / 2; cnt_idx++) {
+    delay(1);
+    props->safety_check();
+  }
+  props->brake();
+  analogWrite(pitch_led, 0);
 
+  motion_tracker->init(); 
 
   // stall();
 #endif

@@ -55,7 +55,8 @@ def thrust2forces_torques(t, A, v_l, v_w):
 def forces_yaw_torque_to_thrusts(f_xyz, yaw_torque, t_mat, v_l, v_w):
     torques_xy = forces2torques(f_xyz, v_l, v_w)
     torques_and_netthrust = list(torques_xy) + [yaw_torque, np.linalg.norm(f_xyz)]
-    t_pred = np.dot(np.linalg.pinv(t_mat), torques_and_netthrust)
+    tm = np.linalg.pinv(t_mat)
+    t_pred = np.dot(tm, torques_and_netthrust) / 5.
     return t_pred
 
 
@@ -71,8 +72,8 @@ if __name__ == '__main__':
     thrust_torque_coeffs = np.array([.3, .3, .3, .3])
 
     radius_front = .12
-    radius_rear = .14
-    angle_front_deg = 120
+    radius_rear = .12
+    angle_front_deg = 90
     angle_rear_deg = 90
 
     # radius_front = .2556
@@ -91,7 +92,11 @@ if __name__ == '__main__':
 
     t_mat = get_tmat(radius_front, radius_rear, thrust_torque_coeffs)
     f_xyz, torques_xyz = thrust2forces_torques(thrusts, t_mat, length, width)
-    t_pred = forces_yaw_torque_to_thrusts(f_xyz, torques_xyz[-1], t_mat, length, width)
+    # t_pred = forces_yaw_torque_to_thrusts(f_xyz, torques_xyz[-1], t_mat, length, width)
+
+    f = [0, 0, 2.5]
+    tz = .05
+    t_pred = forces_yaw_torque_to_thrusts(f, tz, t_mat, length, width)
 
     print(t_pred, f_xyz)
     print(np.max(np.abs(t_pred - thrusts)))

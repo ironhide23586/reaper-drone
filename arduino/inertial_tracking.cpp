@@ -59,15 +59,16 @@ namespace InertialTracking {
             }
             for (int j = 0; j < 3; j++) {
                 IMUDevice::gyro_xyz_offset[j] = (NEW_OFFSET_WEIGHT * IMUDevice::gyro_xyz[j]) + ((1 - NEW_OFFSET_WEIGHT) * IMUDevice::gyro_xyz_offset[j]);
+                // IMUDevice::gyro_xyz_offset[j] += IMUDevice::gyro_xyz[j];
             }
         }
-        Serial.print("Gyroscope Offset XYZ:\t");
-        for (int j = 0; j < 3; j++) {
-            // IMUDevice::gyro_xyz_offset[j] /= NUM_CALIBRATION_SAMPLES;
-            Serial.print(IMUDevice::gyro_xyz_offset[j]);
-            Serial.print("\t");
-        }
-        Serial.print("\n");
+        // Serial.print("Gyroscope Offset XYZ:\t");
+        // Serial.print(IMUDevice::gyro_xyz_offset[0]);
+        // Serial.print("\t");
+        // Serial.print(IMUDevice::gyro_xyz_offset[1]);
+        // Serial.print("\t");
+        // Serial.print(IMUDevice::gyro_xyz_offset[2]);
+        // Serial.print("\n");
         IMUDevice::calibrated = true;
         Serial.println(IMUDevice::calibrated);
     }
